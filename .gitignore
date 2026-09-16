@@ -1,0 +1,22 @@
+# Build artifacts
+build/
+sdkconfig.old
+managed_components/
+dependencies.lock
+
+# Node / plugin dev
+node_modules/
+
+# Python
+.venv/
+__pycache__/
+
+# Secrets / credentials — never commit
+*.key
+*.pem
+.env
+
+# Logs and captured audio (golden fixtures are force-added intentionally)
+*.log
+*.pcm
+*.opus
