@@ -107,7 +107,7 @@ OpenAPI中声明额外字段不允许，但本次请求额外携带sessionID仍�
 | 证据 | 位置 | 含义 |
 | --- | --- | --- |
 | version=1.18.30，exports含`./tui` | package.json | 不是仅凭官网泛泛猜测TUI插件存在 |
-| TuiRouteCurrent包含sessionID | tui.d.ts:13 | 可读取页面路由信息 |
+| TuiRouteCurrent为**判别联合**：`{name:"home"}` \| `{name:"session";params:{sessionID;prompt?}}` \| `{name:string;params?}` | tui.d.ts:13-24（1.18.31 复核，2026-09-20） | 可取当前会话ID，但**仅**在 `name==="session"` 分支；sessionID **不是**顶层字段。原表述"包含sessionID"不够精确 |
 | TuiPromptRef.current/set | tui.d.ts:128 | 草稿含input/mode/parts，有同步set接口 |
 | TuiState.session | tui.d.ts:287 | get/todo/messages/status/permission/question可用类型 |
 | session_prompt slot | tui.d.ts:363 | 含session_id、visible、disabled、on_submit和ref |

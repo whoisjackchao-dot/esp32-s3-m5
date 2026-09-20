@@ -257,7 +257,7 @@ sequenceDiagram
 
 `stream=true`虽然是厂商可选项，但它是文字SSE输出，不是本设计采用的边录边上传协议。首版只接收完整结果，不将半句转录反复追加到草稿。
 
-**计费单价、试用额度、套餐权益与云端保留时长未核实到本用户账号，不在HLD写猜测值。**
+**计费单价、试用额度、套餐权益与云端保留时长未核实到本用户账号，不在HLD写猜测值。**用户已于2026-09-20确认充值完成（口头确认，金额与账号侧价格未核对）；官方模型页同日复核：支持普通话及主要方言、英语多口音等数十种语言，厂商公布CER 0.0717——属厂商口径，不作为本项目30条验收依据。
 
 ### PAY-02：OpenCode所选模型【可能付费，既有系统边界】
 
@@ -502,7 +502,7 @@ M10优先复用TUI已有SDK/state同步，不同时为每个字段再启动一�
 
 - [原设计及用户决策](./StickS3_OpenCode_语音状态屏_设计文档.md)、[集中审阅记录](./StickS3_OpenCode_方法论审查与决策.md)、[契约C01—C10](./StickS3_OpenCode_契约与演进设计补充.md)。
 - [现场接口实验与源码证据](./StickS3_OpenCode_可行性核查.md)：普通append不保护session、Windows→WSL localhost、插件类型、累计费用口径。
-- [智谱ASR官方API](https://docs.bigmodel.cn/api-reference/模型-api/语音转文本)、[GLM-ASR-2512](https://docs.bigmodel.cn/cn/guide/models/sound-and-video/glm-asr-2512)、[价格入口](https://open.bigmodel.cn/pricing)、[隐私政策](https://docs.bigmodel.cn/cn/terms/privacy-policy)。本次只读取文档，未使用Key调用。
+- [智谱ASR官方API](https://docs.bigmodel.cn/api-reference/模型-api/语音转文本)、[GLM-ASR-2512](https://docs.bigmodel.cn/cn/guide/models/sound-and-video/glm-asr-2512)（2026-09-20复核：端点、25MB/30秒限制与本HLD一致）、[价格入口](https://open.bigmodel.cn/pricing)、[官方体验中心](https://bigmodel.cn/trialcenter/modeltrial/voice)、[隐私政策](https://docs.bigmodel.cn/cn/terms/privacy-policy)。只读取文档，未使用Key调用；用户确认充值后亦未发起真实识别。
 - [OpenCode Server官方文档](https://opencode.ai/docs/server/)、[TUI配置schema](https://opencode.ai/tui.json)。精确实现以1.18.30运行时和匹配源码为准。
 - [v1.18.30 TUI Prompt实现](https://github.com/anomalyco/opencode/blob/3104c1428ec91f809e5ab86631300de41eb6952e/packages/tui/src/component/prompt/index.tsx)、[TUI追加handler](https://github.com/anomalyco/opencode/blob/3104c1428ec91f809e5ab86631300de41eb6952e/packages/opencode/src/server/routes/instance/httpapi/handlers/tui.ts)。
 - [v1.18.30原生Session接口定义](https://github.com/anomalyco/opencode/blob/3104c1428ec91f809e5ab86631300de41eb6952e/packages/opencode/src/server/routes/instance/httpapi/groups/session.ts)、[Permission接口](https://github.com/anomalyco/opencode/blob/3104c1428ec91f809e5ab86631300de41eb6952e/packages/opencode/src/server/routes/instance/httpapi/groups/permission.ts)、[Question接口](https://github.com/anomalyco/opencode/blob/3104c1428ec91f809e5ab86631300de41eb6952e/packages/opencode/src/server/routes/instance/httpapi/groups/question.ts)：本轮回读核对状态、待办、消息、子会话和等待交互读取接口。

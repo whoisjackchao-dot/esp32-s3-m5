@@ -1,8 +1,8 @@
 # 智谱ASR API申请与配置操作手册
 
 > 适用项目：StickS3 × Windows C++托盘 × WSL OpenCode。  
-> 核对日期：2026-09-15。ASR是语音识别，不是聊天模型API。  
-> 已核对官方公开文档，**没有登录你的账号、申请Key、充值或执行真实识别调用**。控制台具体布局/权益以登录后页面为准。
+> 核对日期：2026-09-15；2026-09-20 复核官方模型页。ASR是语音识别，不是聊天模型API。  
+> 已核对官方公开文档。**充值已由用户于2026-09-20确认完成**；专用Key申请、账号侧价格/额度核对与首次真实识别调用仍未执行。控制台具体布局/权益以登录后页面为准。
 
 ## 1. 先看操作顺序与费用
 
@@ -36,6 +36,7 @@
 | 平台首页 | <https://bigmodel.cn> |
 | API Key管理 | <https://bigmodel.cn/usercenter/proj-mgmt/apikeys> |
 | 当前价格入口 | <https://open.bigmodel.cn/pricing> |
+| 官方体验中心 | <https://bigmodel.cn/trialcenter/modeltrial/voice> |
 | GLM-ASR-2512模型说明 | <https://docs.bigmodel.cn/cn/guide/models/sound-and-video/glm-asr-2512> |
 | 语音转文本接口 | <https://docs.bigmodel.cn/api-reference/模型-api/语音转文本> |
 | 官方快速开始 | <https://docs.bigmodel.cn/cn/guide/start/quick-start> |

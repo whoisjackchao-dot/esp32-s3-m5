@@ -1,0 +1,17 @@
+{
+  "name": "sticks3-opencode-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "StickS3 x OpenCode: M09 安全草稿插件 + M10 状态归约 (TUI plugin)",
+  "scripts": {
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "1.18.31",
+    "typescript": "^5.9.3",
+    "@types/bun": "latest"
+  }
+}
