@@ -136,11 +136,10 @@ s3p_reasm_rc_t s3p_reasm_end(s3p_reasm_t *r, uint32_t recording_id, uint32_t tot
         return S3P_REASM_FAILED;
     }
     if (s3p_reasm_is_complete(r)) {
-        /* 样本数对账仅在完整时执行（BLE-12：声明与实际不符 → FAILED） */
-        if (total_samples != (uint32_t)r->append_pos / 2u) {
-            r->state = S3P_REASM_STATE_FAILED;
-            return S3P_REASM_FAILED;
-        }
+        /* 冻结契约 §3.2：AUDIO 载荷为 Opus 字节，与 totalSamples（16kHz 采样数）
+         * 不同单位，无法对账；END.totalSamples 由上层按 TX-18 阈值校验。
+         * 旧 append_pos/2 对账是 PCM 假设残留，与契约冲突（实测 recID=1 会话被误判 FAILED）。 */
+        (void)total_samples;
         r->state = S3P_REASM_STATE_COMPLETE;
         return S3P_REASM_OK;
     }

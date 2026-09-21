@@ -129,6 +129,22 @@ int main(void) {
         s3p_reasm_destroy(r);
     }
 
+    /* M2 契约语义（冻结 §3.2）：AUDIO 载荷为 Opus 字节，totalSamples 为 16kHz
+     * 采样数——两者不同单位，end() 不得做字节/样本对账（TX-18 由 ASR 层校验） */
+    TEST("M2: opus payload bytes not reconciled against totalSamples");
+    {
+        s3p_reasm_t *r = s3p_reasm_create(g_buf, sizeof(g_buf));
+        uint8_t payload[137] = {0x5A}; /* 模拟 Opus 帧载荷 */
+        CHECK(s3p_reasm_begin(r, 1u, 3u, 16000u) == S3P_REASM_OK);
+        for (uint32_t seq = 0; seq < 3u; seq += 1) {
+            CHECK(s3p_reasm_feed(r, 1u, seq, 0u, 1u, payload, sizeof(payload)) == S3P_REASM_OK);
+        }
+        /* totalSamples=2880（采样）≠ append_pos(411B)/2 —— 契约下必须 COMPLETE */
+        CHECK(s3p_reasm_end(r, 1u, 3u, 3u * 960u, 0u) == S3P_REASM_OK);
+        CHECK(s3p_reasm_is_complete(r));
+        s3p_reasm_destroy(r);
+    }
+
     /* BLE-14：不属于当前 recording 的包 → 丢弃 */
     TEST("BLE-14: foreign recording id dropped");
     {
