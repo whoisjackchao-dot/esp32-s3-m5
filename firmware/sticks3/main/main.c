@@ -1,12 +1,14 @@
-// StickS3 固件主入口（M2 骨架）
-// 当前：芯片自检 + s3p_proto 自检（黄金向量 SV-01/SV-02/SV-03/SV-05 启动期自校验）。
-// 采音（M01）/BLE（M02）/屏幕（M03）按故事增量进入。
+// StickS3 固件主入口（M2 骨架 + M01 采音通路）
+// 当前：芯片自检 + s3p_proto 黄金向量自检（设备启动期执行）+ 麦克风采音统计（通路证据）。
+// BLE（M02）按冻结协议增量进入。
 #include "s3p_proto.h"
 
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_log.h"
 #include "esp_system.h"
+
+#include "audio_capture.h"
 
 static const char *TAG = "sticks3";
 
@@ -44,6 +46,33 @@ static int proto_selftest(void) {
     return 0;
 }
 
+/* M01 采音通路证据：3 秒窗口的 min/max/avg 统计（全零或卡死即为通路异常） */
+static void audio_path_evidence(void) {
+    static int16_t samples[960]; /* 60ms @16kHz 单声道 */
+    for (int sec = 1; sec <= 3; sec += 1) {
+        int32_t sum = 0;
+        int16_t mn = INT16_MAX;
+        int16_t mx = INT16_MIN;
+        uint32_t total = 0;
+        for (int frame = 0; frame < 16; frame += 1) {
+            size_t got = 0;
+            if (audio_capture_read(samples, 960, &got) != ESP_OK) {
+                ESP_LOGE(TAG, "audio read failed @ %ds", sec);
+                return;
+            }
+            for (size_t i = 0; i < got; i += 1) {
+                sum += samples[i];
+                if (samples[i] < mn) mn = samples[i];
+                if (samples[i] > mx) mx = samples[i];
+            }
+            total += (uint32_t)got;
+        }
+        const int avg = total > 0 ? (int)(sum / (int32_t)total) : 0;
+        ESP_LOGI(TAG, "audio %ds: samples=%lu min=%d max=%d avg=%d",
+                 sec, (unsigned long)total, (int)mn, (int)mx, avg);
+    }
+}
+
 void app_main(void) {
     esp_chip_info_t chip;
     esp_chip_info(&chip);
@@ -59,6 +88,12 @@ void app_main(void) {
         ESP_LOGI(TAG, "s3p_proto selftest: PASS (SV-01/02/03/05)");
     } else {
         ESP_LOGE(TAG, "s3p_proto selftest: FAIL at step %d", proto_fail);
+    }
+
+    if (audio_capture_init() == ESP_OK) {
+        audio_path_evidence();
+    } else {
+        ESP_LOGE(TAG, "audio capture init FAILED");
     }
     ESP_LOGI(TAG, "free heap        : %lu", (unsigned long)esp_get_free_heap_size());
 }
