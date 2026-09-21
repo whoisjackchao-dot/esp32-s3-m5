@@ -19,6 +19,7 @@ static const char *TAG = "audio_session";
 static OpusEncoder *s_enc;
 static TaskHandle_t s_task;
 static uint32_t s_rec_id;
+static volatile bool s_active;
 
 static int16_t s_pcm[S3P_SAMPLES_PER_FRAME];
 static uint8_t s_opus[512];
@@ -146,8 +147,14 @@ static void session_task(void *arg) {
     (void)arg;
     for (;;) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        s_active = true;
         run_session();
+        s_active = false;
     }
+}
+
+bool audio_session_active(void) {
+    return s_active;
 }
 
 esp_err_t audio_session_init(void) {

@@ -11,6 +11,7 @@
 #include "audio_capture.h"
 #include "audio_session.h"
 #include "ble_gatt.h"
+#include "display.h"
 
 static const char *TAG = "sticks3";
 
@@ -109,6 +110,12 @@ void app_main(void) {
         ESP_LOGI(TAG, "ble gatt init OK（等待主机连接配对）");
     } else {
         ESP_LOGE(TAG, "ble gatt init FAILED");
+    }
+
+    if (display_init() == ESP_OK) {
+        ESP_LOGI(TAG, "display init OK（自检图案后进入状态轮询）");
+    } else {
+        ESP_LOGE(TAG, "display init FAILED");
     }
     ESP_LOGI(TAG, "free heap        : %lu", (unsigned long)esp_get_free_heap_size());
 }
