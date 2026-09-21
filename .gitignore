@@ -20,3 +20,6 @@ __pycache__/
 *.log
 *.pcm
 *.opus
+
+# 刷写产物（本地保留，二进制不入库）
+flash-artifacts/
