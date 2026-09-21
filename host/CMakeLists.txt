@@ -17,5 +17,7 @@ add_executable(toolchain_check src/toolchain_check.cpp)
 target_compile_definitions(toolchain_check PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(toolchain_check PRIVATE user32)
 
-# 产品目标占位（M1 最小 Windows 入口在对应故事中新增，不在此预建空壳）
-# add_executable(sticks3_host_tray ...)
+# M1 最小 Windows 入口：向本地桥接发送一次 draft.append（契约 BR-04）
+add_executable(sticks3_host_entry src/host_entry.cpp)
+target_compile_definitions(sticks3_host_entry PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_link_libraries(sticks3_host_entry PRIVATE winhttp)
