@@ -9,6 +9,7 @@
 #include "esp_system.h"
 
 #include "audio_capture.h"
+#include "ble_gatt.h"
 
 static const char *TAG = "sticks3";
 
@@ -94,6 +95,12 @@ void app_main(void) {
         audio_path_evidence();
     } else {
         ESP_LOGE(TAG, "audio capture init FAILED");
+    }
+
+    if (ble_gatt_init() == ESP_OK) {
+        ESP_LOGI(TAG, "ble gatt init OK（等待主机连接配对）");
+    } else {
+        ESP_LOGE(TAG, "ble gatt init FAILED");
     }
     ESP_LOGI(TAG, "free heap        : %lu", (unsigned long)esp_get_free_heap_size());
 }

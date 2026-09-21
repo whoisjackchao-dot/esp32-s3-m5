@@ -23,3 +23,5 @@ __pycache__/
 
 # 刷写产物（本地保留，二进制不入库）
 flash-artifacts/
+host/src/*.obj
+host/src/*.exe
