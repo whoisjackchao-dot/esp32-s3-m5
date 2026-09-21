@@ -9,6 +9,7 @@
 #include "esp_system.h"
 
 #include "audio_capture.h"
+#include "audio_session.h"
 #include "ble_gatt.h"
 
 static const char *TAG = "sticks3";
@@ -97,7 +98,14 @@ void app_main(void) {
         ESP_LOGE(TAG, "audio capture init FAILED");
     }
 
+    if (audio_session_init() == ESP_OK) {
+        ESP_LOGI(TAG, "opus 会话层就绪");
+    } else {
+        ESP_LOGE(TAG, "audio session init FAILED");
+    }
+
     if (ble_gatt_init() == ESP_OK) {
+        ble_gatt_set_ctrl_cb(audio_session_on_ctrl);
         ESP_LOGI(TAG, "ble gatt init OK（等待主机连接配对）");
     } else {
         ESP_LOGE(TAG, "ble gatt init FAILED");

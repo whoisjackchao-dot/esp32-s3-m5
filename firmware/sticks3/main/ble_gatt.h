@@ -14,6 +14,11 @@
 
 esp_err_t ble_gatt_init(void);
 
+/* 控制面回调：收到合法 Control Write（msgType 0x10/0x11/0x12）后由 GATT 层调用。
+ * 用于 READY 触发音频会话，避免 ble_gatt 反向依赖会话层。 */
+typedef void (*ble_gatt_ctrl_cb_t)(uint8_t msg_type, const uint8_t *data, uint16_t len);
+void ble_gatt_set_ctrl_cb(ble_gatt_ctrl_cb_t cb);
+
 bool ble_gatt_connected(void);
 uint16_t ble_gatt_mtu(void);
 bool ble_gatt_audio_subscribed(void);

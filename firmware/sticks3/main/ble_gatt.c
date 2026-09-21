@@ -40,6 +40,7 @@ static bool s_event_subscribed;
 static uint16_t s_link_mtu;
 static uint16_t s_host_mtu;   /* READY{mtu} 上报值 */
 static uint8_t s_heartbeat_seq;
+static ble_gatt_ctrl_cb_t s_ctrl_cb;
 
 static int chr_audio_access(uint16_t conn_handle, uint16_t attr_handle,
                             struct ble_gatt_access_ctxt *ctxt, void *arg);
@@ -81,6 +82,10 @@ uint16_t ble_gatt_mtu(void) {
 
 bool ble_gatt_audio_subscribed(void) {
     return s_audio_subscribed;
+}
+
+void ble_gatt_set_ctrl_cb(ble_gatt_ctrl_cb_t cb) {
+    s_ctrl_cb = cb;
 }
 
 static esp_err_t notify_value(uint16_t val_handle, bool subscribed,
@@ -140,6 +145,9 @@ static int chr_ctrl_access(uint16_t conn_handle, uint16_t attr_handle,
         }
         s_host_mtu = (uint16_t)(buf[2] | (buf[3] << 8));
         ESP_LOGI(TAG, "host READY: protoVer=%u mtu=%u", buf[1], s_host_mtu);
+        if (s_ctrl_cb) {
+            s_ctrl_cb(buf[0], buf, om_len);
+        }
         break;
     case 0x11: /* HEARTBEAT{seq u8}，共 2 字节 */
         if (om_len != 2) {
