@@ -1,0 +1,110 @@
+# M2 BLE 线协议冻结（StickS3 ↔ Windows 主机）
+
+> 状态：**M2 开工冻结草案 v1.0**（2026-09-21）。依据 [C07](../StickS3_OpenCode_契约与演进设计补充.md)、
+> [HLD §10](../StickS3_OpenCode_功能模块HLD.md)、[测试矩阵 §4](../StickS3_OpenCode_测试用例与追踪矩阵.md)。
+> 本文件解除 C07 开工闸门：UUID/帧布局/字节序/限额/摘要/尾帧超时全部给出可测试取值。
+> 变更须走：改版本 → 更新两端解析与黄金向量 → 契约回归（C07 末条）。
+
+## 1. GATT 布局
+
+| 项 | 值 |
+| --- | --- |
+| 服务 UUID | `22587f80-334a-53d6-beb8-8a6ace31af07` |
+| Audio Notify（设备→主机） | `54d5e361-d549-55cc-ab98-66ebc8afe4f3`，Notify，需加密 |
+| Control Write（主机→设备） | `14be07f7-5cd5-5d0d-b56c-ecbbc6b162c0`，Write Without Response，需加密 |
+| Device Event（设备→主机） | `a1d7042f-43a0-53b5-ad2f-a1b3ae57c79c`，Notify，需加密 |
+
+- 连接参数：**单连接**（MAX_CONNECTIONS=1）、LE Secure Connections、Bond=1、MITM=0（Just Works 配对 + 加密）。
+- 配对由物理确认（BLE-03）；旧 bond 不被同名陌生设备替换（BLE-01/02）。
+
+## 2. MTU 策略（C07 第 4 条）
+
+- 首选 MTU **247**；**MTU < 65 时显式拒绝录音开始**（BEGIN 失败 + ERROR 事件），**不得静默截断**。
+- 依据：Audio 分片头 10 字节（§3），MTU65 → 单通知净载荷 55 字节；20kbit/s 60ms 帧约 150 字节
+  需 3 片以内，30 秒 500 帧约 ≤1500 通知，时延预算内。MTU23（净载荷 20）需 17 片/帧，
+  不可接受，故拒绝而非降级。
+
+## 3. 包格式（Audio Notify，统一**小端**）
+
+### 3.1 包头（所有包共有，2 字节）
+
+| 偏移 | 字段 | 宽度 | 值 |
+| --- | --- | --- | --- |
+| 0 | packetType | u8 | 见 §3.2 |
+| 1 | protocolVersion | u8 | 1 |
+
+### 3.2 包类型与载荷
+
+**BEGIN（0x01）** — 12 字节
+
+| 偏移 | 字段 | 宽度 | 说明 |
+| --- | --- | --- | --- |
+| 2 | recordingID | u32 | 设备生成，单调递增；重启回绕允许（bootID 隔离由重连握手承担） |
+| 6 | frameCount | u16 | 预告帧数（30s/60ms=500；松开提前结束以 END 为准） |
+| 8 | sampleRate | u16 | 16000 |
+| 10 | frameMs | u8 | 60 |
+| 11 | reserved | u8 | 0 |
+
+**AUDIO（0x02）** — 10 字节头 + 分片载荷
+
+| 偏移 | 字段 | 宽度 | 说明 |
+| --- | --- | --- | --- |
+| 2 | recordingID | u32 | |
+| 6 | frameSeq | u32 | 0 起，单调递增，**u32 无回绕歧义**（500 帧远小于 2³²） |
+| 10 | fragIndex | u8 | 0 起 |
+| 11 | fragCount | u8 | 本帧总分片数（≥1） |
+| 12 | fragLen | u16 | 本片 Opus 字节数（不含头） |
+| 14 | payload | fragLen | Opus 载荷片段，按 (frameSeq, fragIndex) 顺序重组 |
+
+**END（0x03）** — 16 字节
+
+| 偏移 | 字段 | 宽度 | 说明 |
+| --- | --- | --- | --- |
+| 2 | recordingID | u32 | |
+| 6 | totalFrames | u32 | 实际帧数 |
+| 10 | totalSamples | u32 | 有效样本总数（16kHz；<4800 由主机按过短拒绝，TX-18） |
+| 14 | summary | u32 | FNV-1a(全部 Opus 载荷字节, seed=0x811c9dc5)，**主机独立计算黄金向量** |
+
+**DEVICE_CANCEL（0x04，Device Event 特征）** — 6 字节：type, ver, recordingID
+
+**ERROR（0x05，Device Event 特征）** — 8 字节：type, ver, recordingID, errorCode(u16)
+errorCode：1=Opus 编码失败，2=缓冲耗尽，3=麦克风初始化失败，4=协议 violation
+
+**HOST_STATE/READY/HEARTBEAT（Control Write，主机→设备）** — 载荷首字节 msgType：
+0x10=READY{protocolVersion u8, mtu u16}；0x11=HEARTBEAT{seq u8}；0x12=STATE{快照版本 u8 + 精简状态位图 u8}
+（状态位图字段在 M4 冻结；M2 只要求 READY/HEARTBEAT 可往返）
+
+## 4. 会话与重组规则
+
+| 规则 | 冻结值 | 用例 |
+| --- | --- | --- |
+| BEGIN → AUDIO → END 顺序；END 先到 = 协议 violation | ERROR(4)，丢弃整段 | BLE-10 |
+| 尾帧等待 `FRAME_DRAIN_TIMEOUT` | **2000 ms**，起点=END 收到时刻 | BLE-10/11 |
+| 重复 (frameSeq,fragIndex) | 忽略（仅记一次） | BLE-07 |
+| 同 ID 同序号内容冲突（fragLen 或 payload 前 8 字节不同） | 整段失败 ERROR | BLE-08 |
+| 缺片（FRAME_DRAIN_TIMEOUT 内未集齐） | 整段失败，无 ASR | BLE-06/11 |
+| frameSeq > 宣告 frameCount-1 | 协议 violation，整段失败 | BLE-13 |
+| recordingID 与 BEGIN 不符的迟到包 | 丢弃并计数 | BLE-14 |
+| 重组缓冲上限 | 单 recording 256 KiB（契约已批）；超限 ERROR(2) | BLE-15 |
+| 有效样本 | END.totalSamples 准；<4800 主机拒 ASR | TX-18 |
+
+## 5. 限额汇总
+
+30s 硬停（TX-02）；单段 Opus ≤256KiB；RECEIPT/重组缓冲如上；心跳 10s（BLE-API-05）；
+15s 无有效状态过期。意外断线自动重连**已绑定**设备，不重放录音/ASR（Q05）。
+
+## 6. 黄金向量要求（TEST-API-02，独立计算）
+
+最小集（十六进制，手推期望字节，不从待测 serializer 生成）：
+1. BEGIN 最小包（recordingID=1, frameCount=500）
+2. AUDIO 单片完整帧（150B 载荷，MTU247 单通知）
+3. AUDIO 三片帧（MTU65 边界）
+4. END 含 summary
+5. 非法：version=2、frameSeq 越界、零片数、summary 错
+6. 大端变体（验证字节序判定拒绝）
+7. 500 帧边界：frameSeq=499 与 500（后者越界拒绝）
+
+## 7. 与上游差异（不继承）
+
+不继承 zoe 8 位序号（30s500 帧会回绕）、voicestick `sm_bonding=0`（本项目强制 bond+加密）、
+两者均无 END 摘要——本协议补齐。无 OTA/HID（BLE-18）。
