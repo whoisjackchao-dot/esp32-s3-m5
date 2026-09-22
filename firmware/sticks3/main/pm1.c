@@ -12,10 +12,13 @@ static const char *TAG = "pm1";
 #define PM1_REG_PWR_CFG   0x06
 #define PM1_REG_I2C_CFG   0x09
 #define PM1_REG_WDT_CNT   0x0A
+#define PM1_REG_GPIO_MODE 0x10
 #define PM1_REG_GPIO_OUT  0x11
+#define PM1_REG_GPIO_DRV  0x13
+#define PM1_REG_GPIO_FUNC 0x16
 
-#define PM1_BIT_ES8311 0x08 /* GPIO3 */
-#define PM1_BIT_L3B    0x04 /* GPIO2 */
+#define PM1_BIT_ES8311 0x08 /* GPIO3：SPK 功放使能（官方 PinMap PYG3_SPK_Pulse） */
+#define PM1_BIT_L3B    0x04 /* GPIO2：L3B 供电轨（LCD/MIC/SPK；ES8311 所在） */
 #define PM1_PWR_DCDC   0x02
 #define PM1_PWR_LDO    0x04
 
@@ -65,12 +68,10 @@ esp_err_t pm1_init(void) {
     return err;
 }
 
-esp_err_t pm1_bit(uint8_t bit, bool on) {
-    const uint8_t reg = PM1_REG_GPIO_OUT;
+static esp_err_t pm1_reg_bit(uint8_t reg, uint8_t bit, bool on) {
     uint8_t val = 0;
-    esp_err_t err = i2c_master_write_read_device(I2C_NUM_0, PM1_I2C_ADDR, &reg,
-                                                 1, &val, 1,
-                                                 pdMS_TO_TICKS(100));
+    const esp_err_t err = i2c_master_write_read_device(
+        I2C_NUM_0, PM1_I2C_ADDR, &reg, 1, &val, 1, pdMS_TO_TICKS(100));
     if (err != ESP_OK) {
         return err;
     }
@@ -78,10 +79,30 @@ esp_err_t pm1_bit(uint8_t bit, bool on) {
     return pm1_write_reg(reg, val);
 }
 
+esp_err_t pm1_bit(uint8_t bit, bool on) {
+    return pm1_reg_bit(PM1_REG_GPIO_OUT, bit, on);
+}
+
+/* M5GFX/M5Unified 的引脚驱动顺序：0x16 清位=GPIO 功能 → 0x10 置位=输出 →
+ * 0x13 清位=推挽 → 0x11 置位=电平。缺任一配置步，仅写 0x11 不会真正驱动引脚。 */
+static esp_err_t pm1_gpio_output(uint8_t bit, bool level) {
+    esp_err_t err = pm1_reg_bit(PM1_REG_GPIO_FUNC, bit, false);
+    if (err == ESP_OK) {
+        err = pm1_reg_bit(PM1_REG_GPIO_MODE, bit, true);
+    }
+    if (err == ESP_OK) {
+        err = pm1_reg_bit(PM1_REG_GPIO_DRV, bit, false);
+    }
+    if (err == ESP_OK) {
+        err = pm1_reg_bit(PM1_REG_GPIO_OUT, bit, level);
+    }
+    return err;
+}
+
 esp_err_t pm1_es8311(bool on) {
-    return pm1_bit(PM1_BIT_ES8311, on);
+    return pm1_gpio_output(PM1_BIT_ES8311, on);
 }
 
 esp_err_t pm1_l3b_lcd(bool on) {
-    return pm1_bit(PM1_BIT_L3B, on);
+    return pm1_gpio_output(PM1_BIT_L3B, on);
 }

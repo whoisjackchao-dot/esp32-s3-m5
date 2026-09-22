@@ -26,32 +26,14 @@ bool audio_capture_ready(void) {
     return s_rx_chan != NULL;
 }
 
-esp_err_t audio_capture_init(void) {
-    /* espressif/es8311 1.0.0 基于旧版 I2C 驱动（i2c_port_t），须先安装 legacy master。 */
-    const i2c_config_t i2c_cfg = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = AUDIO_I2C_SDA,
-        .scl_io_num = AUDIO_I2C_SCL,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = 100000, /* 0 会在 i2c_ll 时钟分频处除零崩溃 */
-        .clk_flags = 0,
-    };
-    esp_err_t err = i2c_param_config(I2C_NUM_0, &i2c_cfg);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "i2c param config: %s", esp_err_to_name(err));
-        return err;
-    }
-    err = i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "i2c driver install: %s", esp_err_to_name(err));
-        return err;
-    }
-
-    /* ES8311 供电由 PM1 GPIO3 门控（M5Unified 语义）：编解码器上电先行，
-     * 同时禁用 PM1 看门狗（其复位会清 GPIO 寄存器导致编码器失电 NACK）。 */
-    if (pm1_init() != ESP_OK || pm1_es8311(true) != ESP_OK) {
-        ESP_LOGE(TAG, "PM1 es8311 电源使能失败");
+static esp_err_t probe_codec_once(es8311_handle_t *out_codec) {
+    /* 实测（2026-09-22 启动日志）：L3B(PM1 GPIO2) 未使能时 ES8311 对 I²C 完全无应答
+     * （0x18/0x19 均 NACK，而 0x68/0x6E 正常）。L3B 原本只在 display_init 中开启，
+     * 而音频探测早于它，故此处必须提前使能 L3B。同时禁用 PM1 看门狗
+     * （其复位会清 GPIO 寄存器导致外设失电 NACK）。 */
+    if (pm1_init() != ESP_OK || pm1_l3b_lcd(true) != ESP_OK ||
+        pm1_es8311(true) != ESP_OK) {
+        ESP_LOGE(TAG, "PM1 电源使能失败");
         return ESP_FAIL;
     }
     vTaskDelay(pdMS_TO_TICKS(20));
@@ -114,7 +96,46 @@ esp_err_t audio_capture_init(void) {
     }
     es8311_microphone_config(codec, false);
     es8311_microphone_gain_set(codec, ES8311_MIC_GAIN_24DB);
-    ESP_LOGI(TAG, "es8311 ready (16kHz/16bit, addr 0x18)");
+    *out_codec = codec;
+    return ESP_OK;
+}
+
+esp_err_t audio_capture_init(void) {
+    /* espressif/es8311 1.0.0 基于旧版 I2C 驱动（i2c_port_t），须先安装 legacy master。 */
+    const i2c_config_t i2c_cfg = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = AUDIO_I2C_SDA,
+        .scl_io_num = AUDIO_I2C_SCL,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = 100000, /* 0 会在 i2c_ll 时钟分频处除零崩溃 */
+        .clk_flags = 0,
+    };
+    esp_err_t err = i2c_param_config(I2C_NUM_0, &i2c_cfg);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "i2c param config: %s", esp_err_to_name(err));
+        return err;
+    }
+    err = i2c_driver_install(I2C_NUM_0, I2C_MODE_MASTER, 0, 0, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "i2c driver install: %s", esp_err_to_name(err));
+        return err;
+    }
+
+    es8311_handle_t codec = NULL;
+    for (int round = 1; round <= 5 && codec == NULL; ++round) {
+        if (round > 1) {
+            ESP_LOGW(TAG, "codec 重试第 %d/5 轮", round);
+            vTaskDelay(pdMS_TO_TICKS(3000));
+        }
+        if (probe_codec_once(&codec) == ESP_OK) {
+            break;
+        }
+    }
+    if (codec == NULL) {
+        return ESP_FAIL;
+    }
+    ESP_LOGI(TAG, "es8311 ready (16kHz/16bit)");
 
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     chan_cfg.dma_desc_num = 6;
