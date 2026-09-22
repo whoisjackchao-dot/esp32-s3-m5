@@ -21,6 +21,7 @@ static OpusEncoder *s_enc;
 static TaskHandle_t s_task;
 static uint32_t s_rec_id;
 static volatile bool s_active;
+static volatile bool s_abort;
 
 static int16_t s_pcm[S3P_SAMPLES_PER_FRAME];
 static uint8_t s_opus[512];
@@ -93,6 +94,10 @@ static void run_session(void) {
     }
 
     for (uint32_t seq = 0; seq < SESSION_FRAMES; seq += 1) {
+        if (s_abort) {
+            ESP_LOGW(TAG, "会话中止（链路断开）seq=%lu", (unsigned long)seq);
+            return;
+        }
         size_t got = 0;
         const esp_err_t rd = audio_capture_read(s_pcm, S3P_SAMPLES_PER_FRAME, &got);
         if (rd != ESP_OK || got != S3P_SAMPLES_PER_FRAME) {
@@ -157,6 +162,7 @@ static void session_task(void *arg) {
     for (;;) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         s_active = true;
+        s_abort = false;
         run_session();
         s_active = false;
     }
@@ -164,6 +170,11 @@ static void session_task(void *arg) {
 
 bool audio_session_active(void) {
     return s_active;
+}
+
+/* 链路断开时立即中止在途会话：不得让旧会话残余帧经新链路重放（Q05）。 */
+void audio_session_abort(void) {
+    s_abort = true;
 }
 
 esp_err_t audio_session_init(void) {

@@ -43,6 +43,7 @@ static uint8_t s_heartbeat_seq;
 static uint8_t s_state_snapver;
 static uint8_t s_state_bitmap; /* 临时位图：bit0=busy bit1=valid（M4 冻结） */
 static ble_gatt_ctrl_cb_t s_ctrl_cb;
+static ble_gatt_disconnect_cb_t s_disconnect_cb;
 
 static int chr_audio_access(uint16_t conn_handle, uint16_t attr_handle,
                             struct ble_gatt_access_ctxt *ctxt, void *arg);
@@ -88,6 +89,10 @@ bool ble_gatt_audio_subscribed(void) {
 
 void ble_gatt_set_ctrl_cb(ble_gatt_ctrl_cb_t cb) {
     s_ctrl_cb = cb;
+}
+
+void ble_gatt_set_disconnect_cb(ble_gatt_disconnect_cb_t cb) {
+    s_disconnect_cb = cb;
 }
 
 bool ble_gatt_host_state_valid(void) {
@@ -179,6 +184,11 @@ static int chr_ctrl_access(uint16_t conn_handle, uint16_t attr_handle,
                  s_state_snapver, s_state_bitmap,
                  (s_state_bitmap & 0x02u) ? ((s_state_bitmap & 0x01u) ? "BUSY" : "IDLE") : "UNKNOWN");
         break;
+    case 0x7F: /* 测试专用：让设备主动断开链路，供 Q05「重连不重放」确定性验证。
+                * 生产固件不应依赖此消息（保留值，非冻结契约的一部分）。 */
+        ESP_LOGW(TAG, "测试钩子：主动断开 conn=%u", s_conn_handle);
+        (void)ble_gap_terminate(s_conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+        break;
     default:
         ESP_LOGW(TAG, "未知控制消息 msgType=0x%02x", buf[0]);
         return BLE_ATT_ERR_UNLIKELY;
@@ -253,6 +263,9 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg) {
         s_link_mtu = 0;
         s_host_mtu = 0;
         s_state_bitmap = 0; /* 断开后主机状态失效 → 屏幕回落 UNKNOWN */
+        if (s_disconnect_cb) {
+            s_disconnect_cb();
+        }
         start_advertising();
         return 0;
     }

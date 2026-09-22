@@ -19,3 +19,6 @@ bool audio_session_active(void);
 
 /* ble_gatt 控制面回调入口：msgType 0x10(READY) 请求启动一次录音会话 */
 void audio_session_on_ctrl(uint8_t msg_type, const uint8_t *data, uint16_t len);
+
+/* 链路断开时由 BLE 层调用：立即中止在途会话，禁止残余帧经新链路重放（Q05）。 */
+void audio_session_abort(void);

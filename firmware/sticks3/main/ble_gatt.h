@@ -19,6 +19,10 @@ esp_err_t ble_gatt_init(void);
 typedef void (*ble_gatt_ctrl_cb_t)(uint8_t msg_type, const uint8_t *data, uint16_t len);
 void ble_gatt_set_ctrl_cb(ble_gatt_ctrl_cb_t cb);
 
+/* 链路断开回调：会话层据此立即中止在途语音事务（Q05 不重放）。 */
+typedef void (*ble_gatt_disconnect_cb_t)(void);
+void ble_gatt_set_disconnect_cb(ble_gatt_disconnect_cb_t cb);
+
 bool ble_gatt_connected(void);
 uint16_t ble_gatt_mtu(void);
 bool ble_gatt_audio_subscribed(void);

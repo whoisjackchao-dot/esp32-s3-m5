@@ -7,6 +7,9 @@
 #include "esp_flash.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "audio_capture.h"
 #include "audio_session.h"
@@ -107,6 +110,7 @@ void app_main(void) {
 
     if (ble_gatt_init() == ESP_OK) {
         ble_gatt_set_ctrl_cb(audio_session_on_ctrl);
+        ble_gatt_set_disconnect_cb(audio_session_abort);
         ESP_LOGI(TAG, "ble gatt init OK（等待主机连接配对）");
     } else {
         ESP_LOGE(TAG, "ble gatt init FAILED");
@@ -118,4 +122,14 @@ void app_main(void) {
         ESP_LOGE(TAG, "display init FAILED");
     }
     ESP_LOGI(TAG, "free heap        : %lu", (unsigned long)esp_get_free_heap_size());
+
+    /* 诊断心跳：USB-Serial-JTAG 在正常 boot 时重新枚举，启动日志在主机接入前丢失；
+     * 周期心跳保证监控接入后必能观察到设备存活与子系统状态。 */
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        ESP_LOGI(TAG, "hb: uptime=%lus heap=%lu audio_ready=%d ble_conn=%d",
+                 (unsigned long)(esp_timer_get_time() / 1000000),
+                 (unsigned long)esp_get_free_heap_size(),
+                 audio_capture_ready(), ble_gatt_connected());
+    }
 }
