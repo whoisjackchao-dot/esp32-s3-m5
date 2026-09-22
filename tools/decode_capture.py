@@ -42,8 +42,8 @@ def main():
             for frame in ctx.decode(av.Packet(pkt)):
                 if frame.samples:
                     arr = frame.to_ndarray()
-                    if arr.ndim == 2 and arr.shape[0] == 2:
-                        arr = arr[:1]  # libopus 解码固定双声道输出，折叠为单声道
+                    if frame.layout == "stereo":
+                        arr = arr.reshape(-1, 2)[:, 0:1]  # 交错双声道 → 取左声道
                     pcm.extend(arr.tobytes())
                     total_samples += arr.size
         except Exception as e:  # noqa: BLE001
