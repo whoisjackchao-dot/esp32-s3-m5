@@ -35,10 +35,10 @@ tests/
 | 模块 | 运行方式 | 状态 |
 | --- | --- | --- |
 | 插件（T/C） | `cd plugin && bun test` | ⏳ 骨架就绪，用例未写 |
-| 主机（T/C） | 待 M1 故事建立 CTest/自定义 runner | ⏳ 未开始 |
+| 主机（T/C） | `host/src/build_<mod>.cmd`（cl 独立测试 exe） | ✅ 5 套件全绿：reasm 566 / asr_adapter 35 / voice_txn 93 / asr_credential 21 checks |
 | 固件（T/C） | ESP-IDF unit-test-app 或主机侧纯逻辑测试 | ⏳ 未开始 |
-| 受控 ASR（TEST-API-01） | 待 M3 实现 | ⏳ 规格见下 |
-| BLE 黄金向量（TEST-API-02） | 待 M2 冻结后实现 | ⏳ 清单见 contracts/M2 |
+| 受控 ASR（TEST-API-01） | `cd tests/tools/mock-asr && bun test`；服务 `bun serve.ts <port> <host>` | ✅ 10/10（场景注入 + 请求审计） |
+| BLE 黄金向量（TEST-API-02） | `cd tests && python3 tools/check_fixtures.py` | ✅ 8/8（F01–F08） |
 
 ## 受控 ASR 服务规格（TEST-API-01，M3 实现）
 
