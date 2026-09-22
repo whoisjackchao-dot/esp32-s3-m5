@@ -13,7 +13,13 @@
 #include <winrt/Windows.Storage.Streams.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <mutex>
+#include <string>
+
+#include <winhttp.h>
+
+#pragma comment(lib, "winhttp.lib")
 
 extern "C" {
 #include "s3p_proto.h"
@@ -51,6 +57,68 @@ static uint32_t fnv_update(uint32_t h, const uint8_t* d, size_t n) {
         h *= 0x01000193u;
     }
     return h;
+}
+
+/* M1 桥接：GET /v1/binding（M1 契约 BR-02，loopback-only）。
+ * 返回 true 时 valid=1；canAppend=false → busy。 */
+static bool read_bridge_binding(bool* busy) {
+    const char* url = std::getenv("STICKS3_BRIDGE_URL");
+    const char* token = std::getenv("STICKS3_BRIDGE_TOKEN");
+    if (!url || !token) {
+        return false;
+    }
+    const std::string prefix = "http://";
+    if (prefix.compare(0, prefix.size(), url, prefix.size()) != 0) {
+        return false;
+    }
+    const std::string rest = url + prefix.size();
+    const auto colon = rest.find(':');
+    if (colon == std::string::npos) {
+        return false;
+    }
+    const std::string host = rest.substr(0, colon);
+    const int port = std::atoi(rest.substr(colon + 1).c_str());
+    if ((host != "127.0.0.1" && host != "localhost") || port <= 0 ||
+        port > 65535) {
+        return false;
+    }
+
+    const std::wstring whost(host.begin(), host.end());
+    HINTERNET ses = WinHttpOpen(L"sticks3-ble/0.1", WINHTTP_ACCESS_TYPE_NO_PROXY,
+                                WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!ses) return false;
+    HINTERNET conn = WinHttpConnect(ses, whost.c_str(), (INTERNET_PORT)port, 0);
+    if (!conn) { WinHttpCloseHandle(ses); return false; }
+    HINTERNET req = WinHttpOpenRequest(conn, L"GET", L"/v1/binding", nullptr,
+                                       WINHTTP_NO_REFERER,
+                                       WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+    if (!req) { WinHttpCloseHandle(conn); WinHttpCloseHandle(ses); return false; }
+    const std::wstring headers = L"Authorization: Bearer " +
+                                 std::wstring(token, token + std::char_traits<char>::length(token));
+    bool ok = false;
+    if (WinHttpSendRequest(req, headers.c_str(), (DWORD)headers.size(),
+                           WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
+        WinHttpReceiveResponse(req, nullptr)) {
+        std::string body;
+        DWORD avail = 0;
+        while (WinHttpQueryDataAvailable(req, &avail) && avail) {
+            std::string chunk(avail, '\0');
+            DWORD rd = 0;
+            if (!WinHttpReadData(req, chunk.data(), avail, &rd)) break;
+            body.append(chunk, 0, rd);
+            if (body.size() > 8192) break;
+        }
+        const bool can_append = body.find("\"canAppend\":true") != std::string::npos;
+        const bool has_field = body.find("\"canAppend\"") != std::string::npos;
+        if (has_field) {
+            *busy = !can_append;
+            ok = true;
+        }
+    }
+    WinHttpCloseHandle(req);
+    WinHttpCloseHandle(conn);
+    WinHttpCloseHandle(ses);
+    return ok;
 }
 
 static int fail(const char* what, const char* detail = "") {
@@ -269,7 +337,29 @@ static int run() {
     }
     std::printf("[PASS] write READY | 1001f700\n");
 
-    const DWORD w = WaitForSingleObject(g_end_evt, 30000);
+    /* M2 纵切：读 M1 桥接真实状态 → STATE(0x12) 下发；桥接未运行 → valid=0
+     * （设备如实显示 UNKNOWN，不用假状态冒充集成） */
+    {
+        bool busy = false;
+        const bool valid = read_bridge_binding(&busy);
+        const uint8_t bitmap = (uint8_t)(valid ? (0x02 | (busy ? 0x01 : 0x00)) : 0x00);
+        Buffer sb(4);
+        sb.Length(4);
+        uint8_t* sd = sb.data();
+        sd[0] = 0x12;
+        sd[1] = S3P_PROTOCOL_VERSION;
+        sd[2] = 1; /* snapshot version */
+        sd[3] = bitmap;
+        const auto sres = ctrlChar.WriteValueAsync(sb, GattWriteOption::WriteWithResponse).get();
+        if (sres != GattCommunicationStatus::Success) {
+            return fail("write STATE", "GATT status != Success");
+        }
+        std::printf("[PASS] write STATE | bitmap=0x%02x (%s)\n", bitmap,
+                    valid ? (busy ? "BUSY from bridge" : "IDLE from bridge") : "bridge absent -> UNKNOWN");
+    }
+
+    /* 满载会话（TX-02）：500 帧 × 60ms ≈ 31s，45s 超时留余量 */
+    const DWORD w = WaitForSingleObject(g_end_evt, 45000);
     std::lock_guard<std::mutex> lk(g_mu);
     if (w != WAIT_OBJECT_0) {
         char d[48];
@@ -307,6 +397,31 @@ static int run() {
     std::printf("[PASS] independent FNV-1a golden check | %08lx == %08lx\n",
                 (unsigned long)h, (unsigned long)g_end.summary);
     std::printf("[PASS] END totalSamples | %lu\n", (unsigned long)g_end.ts);
+
+    /* A4 工具链：完整会话导出（.s3pcap = S3PO magic + recID + frameCount +
+     * [seq u32][len u16][payload]...），由 tools/decode_capture.py 解码为 WAV */
+    const char* capdir = std::getenv("STICKS3_CAPTURE_DIR");
+    if (capdir) {
+        char path[300];
+        std::snprintf(path, sizeof(path), "%s\\rec_%lu.s3pcap", capdir,
+                      (unsigned long)g_end.rec);
+        FILE* f = std::fopen(path, "wb");
+        if (f) {
+            const uint32_t magic = 0x4F503353; /* "S3PO" */
+            std::fwrite(&magic, 4, 1, f);
+            std::fwrite(&g_end.rec, 4, 1, f);
+            std::fwrite(&g_end.tf, 4, 1, f);
+            for (uint32_t s = 0; s < g_end.tf; ++s) {
+                const size_t l = s3p_reasm_read_frame(g_reasm, s, fb, sizeof(fb));
+                std::fwrite(&s, 4, 1, f);
+                const uint16_t l16 = (uint16_t)l;
+                std::fwrite(&l16, 2, 1, f);
+                if (l) std::fwrite(fb, 1, l, f);
+            }
+            std::fclose(f);
+            std::printf("[INFO] frames captured -> %s\n", path);
+        }
+    }
     return 0;
 }
 

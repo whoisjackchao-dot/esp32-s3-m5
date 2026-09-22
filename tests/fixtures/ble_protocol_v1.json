@@ -1,0 +1,78 @@
+{
+  "_comment": "C07/M2 BLE 线协议黄金向量（冻结 v1.0）。字节均为手工推导的期望值，独立于被测 C 序列化器。校验器：tests/tools/check_fixtures.py。多字节字段小端。BEGIN 线上长度为 14B（实现冻结现状：[12..13] 恒 0x00；契约表格 12B 为文档笔误，待契约回归统一）。",
+  "vectors": [
+    {
+      "id": "F01",
+      "name": "BEGIN minimal (recordingID=1, frameCount=500)",
+      "hex": "010101000000f401803e3c000000",
+      "expect": {
+        "type": "BEGIN", "parse": "OK",
+        "recordingID": 1, "frameCount": 500, "sampleRate": 16000, "frameMs": 60
+      }
+    },
+    {
+      "id": "F02",
+      "name": "AUDIO single-frag (seq=0, 150B payload, MTU247 single notify)",
+      "hex": "0201010000000000000000019600000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495",
+      "expect": {
+        "type": "AUDIO", "parse": "OK",
+        "recordingID": 1, "frameSeq": 0, "fragIndex": 0, "fragCount": 1, "fragLen": 150
+      }
+    },
+    {
+      "id": "F03",
+      "name": "AUDIO three-frag headers (seq=7, 150B frame over MTU65, fragLen 51/51/48)",
+      "header_only": true,
+      "hex_list": [
+        "0201010000000700000000033300",
+        "0201010000000700000001033300",
+        "0201010000000700000002033000"
+      ],
+      "expect": {
+        "type": "AUDIO", "parse": "OK",
+        "recordingID": 1, "frameSeq": 7, "fragCount": 3,
+        "fragLen_list": [51, 51, 48]
+      },
+      "_note": "载荷未内联（分片演示关注头部字段）；fragLen 51+51+48=150"
+    },
+    {
+      "id": "F04",
+      "name": "END with summary (recID=1, totalFrames=1, totalSamples=960, summary=FNV1a(F02.payload) independently computed)",
+      "hex": "03010100000001000000c00300006e9ba223",
+      "expect": {
+        "type": "END", "parse": "OK",
+        "recordingID": 1, "totalFrames": 1, "totalSamples": 960,
+        "summary": "0x23a29b6e",
+        "summary_check": "FNV1a32(seed=0x811c9dc5) over F02 payload bytes 00..95 = 0x23a29b6e"
+      }
+    },
+    {
+      "id": "F05",
+      "name": "INVALID: protocolVersion=2 (byteswap guard family)",
+      "hex": "010201000000f401803e3c000000",
+      "expect": { "type": "BEGIN", "parse": "BAD_VERSION" }
+    },
+    {
+      "id": "F06",
+      "name": "INVALID: BEGIN truncated (8B < 14B)",
+      "hex": "010101000000f401803e",
+      "expect": { "type": "BEGIN", "parse": "TOO_SHORT" }
+    },
+    {
+      "id": "F07",
+      "name": "INVALID: END truncated (10B < 18B)",
+      "hex": "0301010000000100000080",
+      "expect": { "type": "END", "parse": "TOO_SHORT" }
+    },
+    {
+      "id": "F08",
+      "name": "ENDIAN bomb: BEGIN with big-endian sampleRate (00 80 -> 32768)",
+      "hex": "010101000000f40100803c000000",
+      "expect": {
+        "type": "BEGIN", "parse": "OK",
+        "sampleRate_not_equal": 16000,
+        "_note": "字节序判定：小端解析下 sampleRate=0x8000，语义层拒绝非 16000（黄金向量要求第 6 条）"
+      }
+    }
+  ]
+}
