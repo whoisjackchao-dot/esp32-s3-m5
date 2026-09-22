@@ -40,6 +40,8 @@ static bool s_event_subscribed;
 static uint16_t s_link_mtu;
 static uint16_t s_host_mtu;   /* READY{mtu} 上报值 */
 static uint8_t s_heartbeat_seq;
+static uint8_t s_state_snapver;
+static uint8_t s_state_bitmap; /* 临时位图：bit0=busy bit1=valid（M4 冻结） */
 static ble_gatt_ctrl_cb_t s_ctrl_cb;
 
 static int chr_audio_access(uint16_t conn_handle, uint16_t attr_handle,
@@ -86,6 +88,14 @@ bool ble_gatt_audio_subscribed(void) {
 
 void ble_gatt_set_ctrl_cb(ble_gatt_ctrl_cb_t cb) {
     s_ctrl_cb = cb;
+}
+
+bool ble_gatt_host_state_valid(void) {
+    return (s_state_bitmap & 0x02u) != 0u;
+}
+
+bool ble_gatt_host_busy(void) {
+    return (s_state_bitmap & 0x01u) != 0u;
 }
 
 static esp_err_t notify_value(uint16_t val_handle, bool subscribed,
@@ -157,8 +167,17 @@ static int chr_ctrl_access(uint16_t conn_handle, uint16_t attr_handle,
         s_heartbeat_seq = buf[1];
         ESP_LOGI(TAG, "host HEARTBEAT: seq=%u", s_heartbeat_seq);
         break;
-    case 0x12: /* STATE：M4 冻结字段，本阶段仅记录 */
-        ESP_LOGI(TAG, "host STATE snapshot（M4 字段，忽略）: len=%u", om_len);
+    case 0x12: /* STATE{快照版本 u8 + 状态位图 u8}，共 4 字节。
+                * 位图语义为 M2 纵切草案（bit0=busy bit1=valid），M4 冻结。 */
+        if (om_len != 4) {
+            ESP_LOGW(TAG, "STATE 长度异常: %u", om_len);
+            return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
+        }
+        s_state_snapver = buf[2];
+        s_state_bitmap = buf[3];
+        ESP_LOGI(TAG, "host STATE snapver=%u bitmap=0x%02x (%s)",
+                 s_state_snapver, s_state_bitmap,
+                 (s_state_bitmap & 0x02u) ? ((s_state_bitmap & 0x01u) ? "BUSY" : "IDLE") : "UNKNOWN");
         break;
     default:
         ESP_LOGW(TAG, "未知控制消息 msgType=0x%02x", buf[0]);
@@ -233,6 +252,7 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg) {
         s_event_subscribed = false;
         s_link_mtu = 0;
         s_host_mtu = 0;
+        s_state_bitmap = 0; /* 断开后主机状态失效 → 屏幕回落 UNKNOWN */
         start_advertising();
         return 0;
     }

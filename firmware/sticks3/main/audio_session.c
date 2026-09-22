@@ -13,8 +13,9 @@
 
 static const char *TAG = "audio_session";
 
-/* M2 测试会话：3 秒 = 50 帧 = 48000 样本（≥ TX-18 的 4800 有效样本线） */
-#define SESSION_FRAMES 50u
+/* M2 满载会话：30 秒硬停（TX-02）= 500 帧 = 480000 样本；READY 触发后
+ * 无按键停止通道前按满时长录制（按键触发为下一增量） */
+#define SESSION_FRAMES 500u
 
 static OpusEncoder *s_enc;
 static TaskHandle_t s_task;
@@ -57,6 +58,12 @@ static void run_session(void) {
         return;
     }
     const uint16_t mtu = ble_gatt_mtu();
+    if (!audio_capture_ready()) {
+        /* 麦克风通路未就绪（init 曾失败）：不发 BEGIN，直接上报错误 */
+        ESP_LOGE(TAG, "采音通路未就绪，拒绝开始");
+        send_error_event(s_rec_id + 1, S3P_ERR_MIC_INIT);
+        return;
+    }
     if (mtu < S3P_MIN_MTU) {
         ESP_LOGE(TAG, "MTU %u < %u，显式拒绝录音（冻结 §2）", mtu, S3P_MIN_MTU);
         send_error_event(s_rec_id + 1, S3P_ERR_PROTOCOL);
@@ -87,9 +94,11 @@ static void run_session(void) {
 
     for (uint32_t seq = 0; seq < SESSION_FRAMES; seq += 1) {
         size_t got = 0;
-        if (audio_capture_read(s_pcm, S3P_SAMPLES_PER_FRAME, &got) != ESP_OK ||
-            got != S3P_SAMPLES_PER_FRAME) {
-            ESP_LOGE(TAG, "采音失败 seq=%lu", (unsigned long)seq);
+        const esp_err_t rd = audio_capture_read(s_pcm, S3P_SAMPLES_PER_FRAME, &got);
+        if (rd != ESP_OK || got != S3P_SAMPLES_PER_FRAME) {
+            ESP_LOGE(TAG, "采音失败 seq=%lu err=%s got=%u",
+                     (unsigned long)seq, esp_err_to_name(rd),
+                     (unsigned)got);
             send_error_event(rec_id, S3P_ERR_MIC_INIT);
             send_device_cancel(rec_id);
             return;

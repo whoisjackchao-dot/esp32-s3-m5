@@ -68,7 +68,9 @@ static inline uint32_t s3p_get_u32(const uint8_t *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-/* --- BEGIN 序列化：写入 14 字节，返回总长 --- */
+/* --- BEGIN 序列化：写入 14 字节，返回总长 ---
+ * 注意：v1.0 实现冻结的字节布局仅定义 [0..11]，[12..13] 必须确定性置零
+ * （契约表格为 12B，实现按 14B 收发——待契约回归统一，禁止发未初始化字节）。 */
 static inline size_t s3p_encode_begin(uint8_t *out, uint32_t recording_id, uint16_t frame_count) {
     out[S3P_HDR_TYPE] = S3P_PKT_BEGIN;
     out[S3P_HDR_VERSION] = (uint8_t)S3P_PROTOCOL_VERSION;
@@ -77,6 +79,8 @@ static inline size_t s3p_encode_begin(uint8_t *out, uint32_t recording_id, uint1
     s3p_put_u16(out + 8, (uint16_t)S3P_SAMPLE_RATE);
     out[10] = (uint8_t)S3P_FRAME_MS;
     out[11] = 0u;
+    out[12] = 0u;
+    out[13] = 0u;
     return S3P_BEGIN_LEN;
 }
 

@@ -6,10 +6,14 @@
 #pragma once
 
 #include "esp_err.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
 
 esp_err_t audio_capture_init(void);
+
+/* I²S RX 通道可用（init 成功后才为 true；供会话层门控） */
+bool audio_capture_ready(void);
 
 /* 阻塞读取一帧采样（16bit PCM，samples 个样本）。read_out 返回实际样本数。 */
 esp_err_t audio_capture_read(int16_t *samples, size_t count, size_t *read_out);

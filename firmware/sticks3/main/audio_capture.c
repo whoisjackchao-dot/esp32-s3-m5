@@ -6,6 +6,8 @@
 #include "driver/i2s_std.h"
 #include "es8311.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "pm1.h"
 
 static const char *TAG = "audio_capture";
 
@@ -19,6 +21,10 @@ static const char *TAG = "audio_capture";
 #define AUDIO_ES8311_ADDR ES8311_ADDRESS_0 /* 0x18：CE 拉低 */
 
 static i2s_chan_handle_t s_rx_chan;
+
+bool audio_capture_ready(void) {
+    return s_rx_chan != NULL;
+}
 
 esp_err_t audio_capture_init(void) {
     /* espressif/es8311 1.0.0 基于旧版 I2C 驱动（i2c_port_t），须先安装 legacy master。 */
@@ -42,22 +48,69 @@ esp_err_t audio_capture_init(void) {
         return err;
     }
 
-    es8311_handle_t codec = es8311_create(I2C_NUM_0, AUDIO_ES8311_ADDR);
-    if (codec == NULL) {
-        ESP_LOGE(TAG, "es8311 create failed（I2C 无应答）");
+    /* ES8311 供电由 PM1 GPIO3 门控（M5Unified 语义）：编解码器上电先行，
+     * 同时禁用 PM1 看门狗（其复位会清 GPIO 寄存器导致编码器失电 NACK）。 */
+    if (pm1_init() != ESP_OK || pm1_es8311(true) != ESP_OK) {
+        ESP_LOGE(TAG, "PM1 es8311 电源使能失败");
         return ESP_FAIL;
     }
-    const es8311_clock_config_t clk_cfg = {
-        .mclk_inverted = false,
-        .sclk_inverted = false,
-        .mclk_from_mclk_pin = true,
-        .mclk_frequency = 256u * AUDIO_SAMPLE_RATE,
-        .sample_frequency = AUDIO_SAMPLE_RATE,
-    };
-    err = es8311_init(codec, &clk_cfg, ES8311_RESOLUTION_16, ES8311_RESOLUTION_16);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "es8311 init: %s", esp_err_to_name(err));
-        return err;
+    vTaskDelay(pdMS_TO_TICKS(20));
+
+    /* I²C 上电瞬态实测会吞掉首次通信（PM1 同类问题）：create+init 带重试；
+     * 并兼容 CE 电平翻转导致的地址漂移（0x18/0x19）。 */
+    uint8_t probe_addr = 0;
+    for (uint8_t a = 3; a < 0x78; ++a) {
+        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+        if (!cmd) continue;
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, (uint8_t)((a << 1) | I2C_MASTER_WRITE), true);
+        i2c_master_stop(cmd);
+        const esp_err_t serr =
+            i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(50));
+        i2c_cmd_link_delete(cmd);
+        if (serr == ESP_OK) {
+            ESP_LOGI(TAG, "i2c scan ack: 0x%02x", a);
+            if (a == ES8311_ADDRESS_0 || a == ES8311_ADDRESS_1) {
+                probe_addr = a;
+            }
+        }
+    }
+    if (probe_addr == 0) {
+        ESP_LOGE(TAG, "总线上无 ES8311 应答（0x18/0x19 均 NACK）");
+    }
+
+    es8311_handle_t codec = NULL;
+    esp_err_t es_err = ESP_FAIL;
+    const uint16_t addrs[2] = {probe_addr ? probe_addr : ES8311_ADDRESS_0,
+                               ES8311_ADDRESS_1};
+    for (int a = 0; a < 2 && codec == NULL; ++a) {
+        for (int attempt = 0; attempt < 2 && codec == NULL; ++attempt) {
+            codec = es8311_create(I2C_NUM_0, addrs[a]);
+            if (codec != NULL) {
+                const es8311_clock_config_t clk_cfg = {
+                    .mclk_inverted = false,
+                    .sclk_inverted = false,
+                    .mclk_from_mclk_pin = true,
+                    .mclk_frequency = 256u * AUDIO_SAMPLE_RATE,
+                    .sample_frequency = AUDIO_SAMPLE_RATE,
+                };
+                es_err = es8311_init(codec, &clk_cfg, ES8311_RESOLUTION_16,
+                                     ES8311_RESOLUTION_16);
+                if (es_err != ESP_OK) {
+                    ESP_LOGW(TAG, "es8311 init@0x%02x: %s（第 %d 次）",
+                             addrs[a], esp_err_to_name(es_err), attempt + 1);
+                    es8311_delete(codec);
+                    codec = NULL;
+                    vTaskDelay(pdMS_TO_TICKS(50));
+                } else {
+                    ESP_LOGI(TAG, "es8311 ready @0x%02x", addrs[a]);
+                }
+            }
+        }
+    }
+    if (codec == NULL) {
+        ESP_LOGE(TAG, "es8311 初始化失败（双地址重试后仍无应答）");
+        return es_err;
     }
     es8311_microphone_config(codec, false);
     es8311_microphone_gain_set(codec, ES8311_MIC_GAIN_24DB);

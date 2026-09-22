@@ -12,8 +12,10 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
 #include "esp_log.h"
+#include "font8x8_basic.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "pm1.h"
 
 static const char *TAG = "display";
 
@@ -29,11 +31,7 @@ static const char *TAG = "display";
 #define DISP_GAP_X 52
 #define DISP_GAP_Y 40
 
-/* M5PM1（I²C 0x6E）寄存器：L3B 屏幕供电轨由 PM1 GPIO2 控制（非 ESP32 GPIO） */
-#define PM1_I2C_ADDR      0x6E
-#define PM1_REG_GPIO_MODE 0x10
-#define PM1_REG_GPIO_OUT  0x11
-#define PM1_GPIO2_L3B     0x04
+/* M5PM1 寄存器操作已收口到 pm1.c（ES8311 使能与 L3B 同在 GPIO_OUT 0x11） */
 
 static esp_lcd_panel_handle_t s_panel;
 static uint16_t s_fb[DISP_W * DISP_H];
@@ -45,20 +43,43 @@ static uint16_t s_fb[DISP_W * DISP_H];
 #define C_BLUE   0x001F
 #define C_NAVY   0x0008
 #define C_DGREEN 0x03E0
+#define C_YELLOW 0xFFE0
 
-static void pm1_bit_op(uint8_t reg, uint8_t bits, bool on) {
-    uint8_t val = 0;
-    /* RMW：与 M5Unified bitOn/bitOff 语义一致，不破坏其他 PM1 GPIO 位 */
-    if (i2c_master_write_read_device(I2C_NUM_0, PM1_I2C_ADDR, &reg, 1, &val, 1,
-                                     pdMS_TO_TICKS(100)) != ESP_OK) {
-        ESP_LOGE(TAG, "PM1 read reg 0x%02x failed", reg);
+/* font8x8（公有领域）：行字节，bit0=最左像素；scale 整数放大 */
+static void draw_char8(int x, int y, char c, uint16_t color, int scale) {
+    const uint8_t idx = (uint8_t)c;
+    if (idx >= 128u) {
         return;
     }
-    val = on ? (uint8_t)(val | bits) : (uint8_t)(val & (uint8_t)~bits);
-    const uint8_t buf[2] = {reg, val};
-    if (i2c_master_write_to_device(I2C_NUM_0, PM1_I2C_ADDR, buf, 2,
-                                   pdMS_TO_TICKS(100)) != ESP_OK) {
-        ESP_LOGE(TAG, "PM1 write reg 0x%02x failed", reg);
+    for (int row = 0; row < 8; ++row) {
+        const uint8_t bits = (uint8_t)font8x8_basic[idx][row];
+        for (int col = 0; col < 8; ++col) {
+            if ((bits & (uint8_t)(1u << col)) == 0) {
+                continue;
+            }
+            for (int sy = 0; sy < scale; ++sy) {
+                for (int sx = 0; sx < scale; ++sx) {
+                    const int px = x + col * scale + sx;
+                    const int py = y + row * scale + sy;
+                    if (px < DISP_W && py < DISP_H) {
+                        s_fb[py * DISP_W + px] = color;
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void draw_str(int x, int y, const char *s, uint16_t color, int scale) {
+    while (*s) {
+        draw_char8(x, y, *s++, color, scale);
+        x += 8 * scale;
+    }
+}
+
+static void pm1_l3b_apply(bool on) {
+    if (pm1_l3b_lcd(on) != ESP_OK) {
+        ESP_LOGE(TAG, "PM1 L3B %s 失败", on ? "on" : "off");
     }
 }
 
@@ -87,65 +108,56 @@ static void draw_boot_pattern(void) {
     esp_lcd_panel_draw_bitmap(s_panel, 0, 0, DISP_W, DISP_H, s_fb);
 }
 
-/* 状态底色：广播=深蓝，已连接=深绿，录音=红 */
-static void draw_state(bool connected, bool recording) {
+/* 状态帧：底色 + 主机状态文字（M2 纵切：未知必须如实显示）+ BLE 行 + 录音标 */
+static void render_frame(bool connected, bool recording, bool state_valid,
+                         bool busy) {
     fill(recording ? C_RED : (connected ? C_DGREEN : C_NAVY));
+    draw_str(4, 4, "STICKS3", C_WHITE, 2);
+    if (!state_valid) {
+        draw_str(4, 36, "STATE", C_WHITE, 2);
+        draw_str(4, 60, "UNKNOWN", C_YELLOW, 2);
+    } else if (busy) {
+        draw_str(4, 40, "BUSY", C_WHITE, 4);
+    } else {
+        draw_str(4, 40, "IDLE", C_WHITE, 4);
+    }
+    draw_str(4, DISP_H - 44, connected ? "BLE:CONN" : "BLE:ADV", C_WHITE, 2);
+    if (recording) {
+        draw_str(4, DISP_H - 22, "REC", C_WHITE, 2);
+    }
 }
 
 static void display_task(void *arg) {
     (void)arg;
+    bool last_rendered = false;
     bool last_conn = false;
     bool last_rec = false;
+    bool last_valid = false;
+    bool last_busy = false;
     bool first = true;
     for (;;) {
         const bool conn = ble_gatt_connected();
         const bool rec = audio_session_active();
-        if (first || conn != last_conn || rec != last_rec) {
-            draw_state(conn, rec);
+        const bool valid = ble_gatt_host_state_valid();
+        const bool busy = ble_gatt_host_busy();
+        if (first || conn != last_conn || rec != last_rec ||
+            valid != last_valid || busy != last_busy) {
+            render_frame(conn, rec, valid, busy);
             last_conn = conn;
             last_rec = rec;
+            last_valid = valid;
+            last_busy = busy;
             first = false;
+            last_rendered = true;
         }
+        (void)last_rendered;
         vTaskDelay(pdMS_TO_TICKS(250));
     }
 }
 
-/* 总线诊断：列出所有 ACK 的 7 位地址（预期 0x18 ES8311 / 0x68 BMI270 / 0x6E PM1） */
-static void i2c_scan(void) {
-    for (uint8_t a = 3; a < 0x78; ++a) {
-        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
-        if (!cmd) continue;
-        i2c_master_start(cmd);
-        i2c_master_write_byte(cmd, (uint8_t)((a << 1) | I2C_MASTER_WRITE), true);
-        i2c_master_stop(cmd);
-        const esp_err_t err =
-            i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(50));
-        i2c_cmd_link_delete(cmd);
-        if (err == ESP_OK) {
-            ESP_LOGI(TAG, "i2c scan ack: 0x%02x", a);
-        }
-    }
-}
-
 esp_err_t display_init(void) {
-    /* 1. PM1 L3B 供电轨（依赖 audio_capture_init 已装好 I2C_NUM_0 总线） */
-    i2c_scan();
-    const uint8_t dev_id_reg = 0x00;
-    uint8_t dev_id = 0;
-    esp_err_t pm1_err = ESP_FAIL;
-    for (int attempt = 0; attempt < 3 && pm1_err != ESP_OK; ++attempt) {
-        pm1_err = i2c_master_write_read_device(I2C_NUM_0, PM1_I2C_ADDR,
-                                               &dev_id_reg, 1, &dev_id, 1,
-                                               pdMS_TO_TICKS(100));
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-    if (pm1_err != ESP_OK) {
-        ESP_LOGE(TAG, "PM1(0x6E) 不可达，屏幕供电无法开启");
-        return ESP_FAIL;
-    }
-    ESP_LOGI(TAG, "PM1 device_id=0x%02x", dev_id);
-    pm1_bit_op(PM1_REG_GPIO_MODE, PM1_GPIO2_L3B, true);
-    pm1_bit_op(PM1_REG_GPIO_OUT, PM1_GPIO2_L3B, true);
+    /* 1. LCD L3B 供电轨（PM1 已由 audio_capture_init 提前初始化） */
+    pm1_l3b_apply(true);
     vTaskDelay(pdMS_TO_TICKS(20));
 
     /* 2. 背光 */

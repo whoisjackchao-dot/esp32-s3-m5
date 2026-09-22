@@ -23,6 +23,10 @@ bool ble_gatt_connected(void);
 uint16_t ble_gatt_mtu(void);
 bool ble_gatt_audio_subscribed(void);
 
+/* 主机 STATE(0x12) 快照（M2 纵切临时位图，M4 冻结） */
+bool ble_gatt_host_state_valid(void);
+bool ble_gatt_host_busy(void);
+
 /* 设备→主机通知（Audio Notify / Device Event 特征）。
  * 未连接或未订阅时返回 ESP_ERR_INVALID_STATE，不静默丢弃调用。 */
 esp_err_t ble_gatt_notify_audio(const uint8_t *data, size_t len);
