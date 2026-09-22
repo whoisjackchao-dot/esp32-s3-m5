@@ -29,6 +29,7 @@ try {
     $upload = 'file=@"' + $audioFile.FullName.Replace('\', '/') + '"'
     $curlConfig | & curl.exe --config - --silent --show-error `
         --connect-timeout 10 --max-time 20 `
+        --ssl-revoke-best-effort `
         --request POST `
         --url 'https://open.bigmodel.cn/api/paas/v4/audio/transcriptions' `
         --form 'model=glm-asr-2512' `
@@ -37,6 +38,7 @@ try {
         --write-out '\nHTTP %{http_code}\n'
     $curlExit = $LASTEXITCODE
     Write-Host ('curl退出码：' + $curlExit)
+    Write-Host '（--ssl-revoke-best-effort：证书链仍完整校验，仅容忍企业网络下吊销服务器不可达；禁用校验的 --insecure 仍被禁止）'
 } finally {
     if ($ptr -ne [IntPtr]::Zero) {
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
