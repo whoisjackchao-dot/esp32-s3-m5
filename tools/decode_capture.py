@@ -42,7 +42,7 @@ def main():
             for frame in ctx.decode(av.Packet(pkt)):
                 if frame.samples:
                     arr = frame.to_ndarray()
-                    if frame.layout == "stereo":
+                    if frame.layout.name == "stereo":
                         arr = arr.reshape(-1, 2)[:, 0:1]  # 交错双声道 → 取左声道
                     pcm.extend(arr.tobytes())
                     total_samples += arr.size
