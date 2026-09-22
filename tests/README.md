@@ -1,7 +1,14 @@
 # tests/ — 跨模块测试与测试基础设施
 
 > 依据 [测试用例与追踪矩阵](../StickS3_OpenCode_测试用例与追踪矩阵.md) 与 [C09 性能基线](../StickS3_OpenCode_契约与演进设计补充.md)。
-> **本目录当前只有骨架与规格；没有任何产品用例已执行。**
+> **2026-09-22 状态更正**：本目录已有可执行测试工具与 fixtures，并有已实测结果，不再是"无任何用例执行"。
+> 已实测证据见 [`evidence/M2/2026-09-22-M2演示执行记录.md`](../evidence/M2/2026-09-22-M2演示执行记录.md)：
+> - ✅ A5 独立黄金向量校验：`tools/check_fixtures.py` → 8/8 PASS（F01–F08）
+> - ✅ A3a 缺片注入：`tools/ble_fault_test.py` → 缺片识别 + 尾帧窗口后仍 INCOMPLETE（BLE-06/11）
+> - ✅ A3b/Q05 断线重连：`tools/ble_q05_reconnect_test.py`（设备主动断链版）→ **PASS**：真实断链（设备侧 `disconnected reason=0x216`、在途会话终止）、重连 0.27s、**静默 3s 内 0 个旧会话包**、新会话健康。
+>   注：旧脚本 `ble_reconnect_test.py` 报的"重放"为**测试假象**（Windows 缓存 ACL，`BleakClient.close()` 未真正断链），已由设备侧日志推翻，详见证据记录 §6/§7。
+>   ⚠️ 验证固件含测试专用钩子（`0x7F`），交付前须移除或登记。
+> 其余用例仍为 NOT_RUN 或 BLOCKED，不得据本目录存在即视为通过。
 
 ## 目录规划
 

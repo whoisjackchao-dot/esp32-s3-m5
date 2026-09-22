@@ -1,0 +1,215 @@
+START 12:43:23
+OPEN 12:43:23.507
+[12:43:25.542] I (157) esp_image: segment 4: paddr=000bb01c vaddr=4037f2dc sizeI (7515) pm1: PWR_CFG=0x17 (chg=1 dcdc=1 ldo=1 boost=0)
+I (7515) pm1: PM1 device_id=0x50 (wdt/idle 已禁用)
+I (7545) audio_capture: i2c scan ack: 0x68
+I (7545) audio_capture: i2c scan ack: 0x6e
+E (7555) audio_capture: 总线上无 ES8311 应答（0x18/0x19 均 NACK）
+E (7555) ES8311: es8311_init(329): I2C read/write error
+W (7555) audio_capture: es8311 init@0x18: ESP_FAIL（第 1 次）
+E (7605) ES8311: es8311_init(329): I2C read/write error
+W (7605) audio_capture: es8311 init@0x18: ESP_FAIL（第 2 次）
+E (7655) ES8311: es8311_init(329): I2C read/write error
+W (7655) audio_capture: es8311 init@0x19: ESP_FAIL（第 1 次）
+E (7705) ES8311: es8311_init(329): I2C read/write error
+W (7705) audio_capture: es8311 init@0x19: ESP_FAIL（第 2 次）
+E (7755) audio_capture: es8311 初始化失败（双地址重试后仍无应答）
+W (7755) audio_capture: codec 重试第 4/5 轮
+[12:43:28.591] I (10765) pm1: PWR_CFG=0x17 (chg=1 dcdc=1 ldo=1 boost=0)
+I (10765) pm1: PM1 device_id=0x50 (wdt/idle 已禁用)
+I (10795) audio_capture: i2c scan ack: 0x68
+I (10795) audio_capture: i2c scan ack: 0x6e
+E (10805) audio_capture: 总线上无 ES8311 应答（0x18/0x19 均 NACK）
+E (10805) ES8311: es8311_init(329): I2C read/write error
+W (10805) audio_capture: es8311 init@0x18: ESP_FAIL（第 1 次）
+E (10855) ES8311: es8311_init(329): I2C read/write error
+W (10855) audio_capture: es8311 init@0x18: ESP_FAIL（第 2 次）
+E (10905) ES8311: es8311_init(329): I2C read/write error
+W (10905) audio_capture: es8311 init@0x19: ESP_FAIL（第 1 次）
+E (10955) ES8311: es8311_init(329): I2C read/write error
+W (10955) audio_capture: es8311 init@0x19: ESP_FAIL（第 2 次）
+[12:43:29.107] E (11005) audio_capture: es8311 初始化失败（双地址重试后仍无应答）
+W (11005) audio_capture: codec 重试第 5/5 轮
+[12:43:31.641] I (14015) pm1: PWR_CFG=0x17 (chg=1 dcdc=1 ldo=1 boost=0)
+I (14015) pm1: PM1 device_id=0x50 (wdt/idle 已禁用)
+[12:43:31.881] I (14045) audio_capture: i2c scan ack: 0x68
+I (14045) audio_capture: i2c scan ack: 0x6e
+E (14055) audio_capture: 总线上无 ES8311 应答（0x18/0x19 均 NACK）
+E (14055) ES8311: es8311_init(329): I2C read/write error
+W (14055) audio_capture: es8311 init@0x18: ESP_FAIL（第 1 次）
+E (14105) ES8311: es8311_init(329): I2C read/write error
+W (14105) audio_capture: es8311 init@0x18: ESP_FAIL（第 2 次）
+E (14155) ES8311: es8311_init(329): I2C read/write error
+W (14155) audio_capture: es8311 init@0x19: ESP_FAIL（第 1 次）
+E (14205) ES8311: es8311_init(329): I2C read/write error
+W (14205) audio_capture: es8311 init@0x19: ESP_FAIL（第 2 次）
+E (14255) audio_capture: es8311 初始化失败（双地址重试后仍无应答）
+E (14255) sticks3: audio capture init FAILED
+I (14255) audio_session: opus 编码器就绪（16kHz 单声道 VOIP 24kbps 60ms）
+I (14255) sticks3: opus 会话层就绪
+I (14265) BLE_INIT: BT controller compile version [51d9dfd]
+I (14265) BLE_INIT: Using main XTAL
+[12:43:32.382]  as clock source
+I (14265) BLE_INIT: Feature Config, ADV:1, BLE_50:1, DTM:1, SCAN:1, CCA:0, SMP:1, CONNECT:1
+I (14265) BLE_INIT: Bluetooth MAC: XX:XX:XX:XX:XX:XX
+I (14265) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+I (14305) NimBLE: GAP procedure initiated: stop advertising.
+
+I (14315) NimBLE: GAP procedure initiated: stop advertising.
+
+I (14315) ble_gatt: host synced; preferred MTU 247 (rc=0)
+I (14315) NimBLE: GAP procedure initiated: advertise; 
+I (14315) NimBLE: disc_mode=2
+I (14315) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=32 adv_itvl_max=48
+I (14315) NimBLE: 
+
+I (14315) ble_gatt: advertising: svc 22587f80-334a-53d6-beb8-8a6ace31af07
+I (14315) ble_gatt: nimble host started (bond=1, MITM=0, MTU<=247)
+I (14315) sticks3: ble gatt init OK（等待主机连接配对）
+[12:43:33.393] I (15355) display: 屏幕就绪：ST7789 135x240 gap(52,40) invert 背光开，状态轮询启动
+I (15355) sticks3: display init OK（自检图案后进入状态轮询）
+I (15355) sticks3: free heap        : 8505699
+[12:43:43.064] I (25355) sticks3: hb: uptime=24s heap=8505699 audio_ready=0 ble_conn=0
+OPEN 12:43:51.724
+[12:43:52.164] I (920) esp_psram: SPI SRAM memory test OK
+I (929) cpu_start: Pro cpu start user code
+I (929) cpu_start: cpu freq: 160000000 Hz
+I (929) app_init: Application information:
+I (929) app_init: Project name:     sticks3
+I (930) app_init: App version:      2713fc9
+I (930) app_init: Compile time:     Sep 22 2026 11:14:10
+I (930) app_init: ELF file SHA256:  3821e6199...
+I (930) app_init: ESP-IDF:          e48ca657
+I (930) efuse_init: Min chip rev:     v0.0
+I (930) efuse_init: Max chip rev:     v0.99 
+I (931) efuse_init: Chip rev:         v0.2
+I (931) heap_init: Initializing. RAM available for dynamic allocation:
+I (931) heap_init: At 3FCB5DC8 len 00033948 (206 KiB): RAM
+I (931) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (931) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (932) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (932) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (933) spi_flash: detected chip: gd
+I (933) spi_flash: flash io: dio
+W (934) i2c:
+[12:43:52.282]  This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
+I (934) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (935) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (936) main_task: Started on CPU0
+I (936) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (936) main_task: Calling app_main()
+I (936) sticks3: idf version      : e48ca657
+I (936) sticks3: chip model       : 9 (9 = ESP32-S3)
+I (936) sticks3: flash size bytes : 8388608
+I (936) sticks3: s3p_proto selftest: PASS (SV-01/02/03/05)
+I (966) pm1: PWR_CFG=0x17 (chg=1 dcdc=1 ldo=1 boost=0)
+I (966) pm1: PM1 device_id=0x50 (wdt/idle 已禁用)
+I (996) audio_capture: i2c scan ack: 0x68
+I (996) audio_capture: i2c scan ack: 0x6e
+E (1006) audio_capture: 总线上无 ES8311 应答（0x18/0x19 均 NACK）
+E (1006) ES8311: es8311_init(329): I2C read/write error
+W (1006) audio_capture: es8311 init@0x18: ESP_FAIL（第 1 次）
+E (1056) ES
+[12:43:52.788] 8311: es8311_init(329): I2C read/write error
+W (1056) audio_capture: es8311 init@0x18: ESP_FAIL（第 2 次）
+E (1106) ES8311: es8311_init(329): I2C read/write error
+W (1106) audio_capture: es8311 init@0x19: ESP_FAIL（第 1 次）
+E (1156) ES8311: es8311_init(329): I2C read/write error
+W (1156) audio_capture: es8311 init@0x19: ESP_FAIL（第 2 次）
+E (1206) audio_capture: es8311 初始化失败（双地址重试后仍无应答）
+W (1206) audio_capture: codec 重试第 2/5 轮
+[12:43:55.850] I (4216) pm1: PWR_CFG=0x17 (chg=1 dcdc=1 ldo=1 boost=0)
+I (4216) pm1: PM1 device_id=0x50 (wdt/idle 已禁用)
+I (4246) audio_capture: i2c scan ack: 0x68
+I (4246) audio_capture: i2c scan ack: 0x6e
+E (4256) audio_capture: 总线上无 ES8311 应答（0x18/0x19 均 NACK）
+E (4256) ES8311: es8311_init(329): I2C read/write error
+W (4256) audio_capture: es8311 init@0x18: ESP_FAIL（第 1 次）
+E (4306) ES8311: es8311_init(329): I2C read/write error
+W (4306) audio_capture: es8311 init@0x18: ESP_FAIL（第 2 次）
+E (4356) ES8311: es8311_init(329): I2C read/write error
+W (4356) audio_capture: es8311 init@0x19: ESP_FAIL（第 1 次）
+E (4406) ES8311: es8311_init(329): I2C read/write error
+W (4406) audio_capture: es8311 init@0x19: ESP_FAIL（第 2 次）
+E (4456) audio_capture: es8311 初始化失败（双地址重试后仍无应答）
+W (4456) audio_capture: codec 重试第 3/5 轮
+[12:43:58.925] I (7466) pm1: PWR_CFG=0x17 (chg=1 dcdc=1 ldo=1 boost=0)
+I (7466) pm1: PM1 device_id=0x50 (wdt/idle 已禁用)
+I (7496) audio_capture: i2c scan ack: 0x68
+I (7496) audio_capture: i2c scan ack: 0x6e
+E (7506) audio_capture: 总线上无 ES8311 应答（0x18/0x19 均 NACK）
+E (7506) ES8311: es8311_init(329): I2C read/write error
+W (7506) audio_capture: es8311 init@0x18: ESP_FAIL（第 1 次）
+E (7556) ES8311: es8311_init(329): I2C read/write error
+W (7556) audio_capture: es8311 init@0x18: ESP_FAIL（第 2 次）
+E (7606) ES8311: es8311_init(329): I2C read/write error
+W (7606) audio_capture: es8311 init@0x19: ESP_FAIL（第 1 次）
+E (7656) ES8311: es8311_init(329): I2C read/write error
+W (7656) audio_capture: es8311 init@0x19: ESP_FAIL（第 2 次）
+[12:43:59.435] E (7706) audio_capture: es8311 初始化失败（双地址重试后仍无应答）
+W (7706) audio_capture: codec 重试第 4/5 轮
+[12:44:01.956] I (10716) pm1: PWR_CFG=0x17 (chg=1 dcdc=1 ldo=1 boost=0)
+I (10716) pm1: PM1 device_id=0x50 (wdt/idle 已禁用)
+[12:44:02.471] I (10746) audio_capture: i2c scan ack: 0x68
+I (10746) audio_capture: i2c scan ack: 0x6e
+E (10756) audio_capture: 总线上无 ES8311 应答（0x18/0x19 均 NACK）
+E (10756) ES8311: es8311_init(329): I2C read/write error
+W (10756) audio_capture: es8311 init@0x18: ESP_FAIL（第 1 次）
+E (10806) ES8311: es8311_init(329): I2C read/write error
+W (10806) audio_capture: es8311 init@0x18: ESP_FAIL（第 2 次）
+E (10856) ES8311: es8311_init(329): I2C read/write error
+W (10856) audio_capture: es8311 init@0x19: ESP_FAIL（第 1 次）
+E (10906) ES8311: es8311_init(329): I2C read/write error
+W (10906) audio_capture: es8311 init@0x19: ESP_FAIL（第 2 次）
+E (10956) audio_capture: es8311 初始化失败（双地址重试后仍无应答）
+W (10956) audio_capture: codec 重试第 5/5 轮
+[12:44:05.434] I (13966) pm1: PWR_CFG=0x17 (chg=1 dcdc=1 ldo=1 boost=0)
+I (13966) pm1: PM1 device_id=0x50 (wdt/idle 已禁用)
+I (13996) audio_capture: i2c scan ack: 0x68
+I (13996) audio_capture: i2c scan ack: 0x6e
+E (14006) audio_capture: 总线上无 ES8311 应答（0x18/0x19 均 NACK）
+E (14006) ES8311: es8311_init(329): I2C read/write error
+W (14006) audio_capture: es8311 init@0x18: ESP_FAIL（第 1 次）
+E (14056) ES8311: es8311_init(329): I2C read/write error
+W (14056) audio_capture: es8311 init@0x18: ESP_FAIL（第 2 次）
+E (14106) ES8311: es8311_init(329): I2C read/write error
+W (14106) audio_capture: es8311 init@0x19: ESP_FAIL（第 1 次）
+E (14156) ES8311: es8311_init(329): I2C read/write error
+W (14156) audio_capture: es8311 init@0x19: ESP_FAIL（第 2 次）
+E (14206) audio_capture: es8311 初始化失败（双地址重试后仍无应答）
+E (14206) sticks3: audio capture init FAILED
+I (14206) audio_session: opus 编码器就绪（16kHz 单声道 VOIP 24kbps 60ms）
+I (14206) sticks3: opus
+[12:44:05.944]  会话层就绪
+I (14216) BLE_INIT: BT controller compile version [51d9dfd]
+I (14216) BLE_INIT: Using main XTAL as clock source
+I (14216) BLE_INIT: Feature Config, ADV:1, BLE_50:1, DTM:1, SCAN:1, CCA:0, SMP:1, CONNECT:1
+I (14216) BLE_INIT: Bluetooth MAC: XX:XX:XX:XX:XX:XX
+I (14216) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+I (14256) NimBLE: GAP procedure initiated: stop advertising.
+
+I (14256) NimBLE: GAP procedure initiated: stop advertising.
+
+I (14266) ble_gatt: host synced; preferred MTU 247 (rc=0)
+I (14266) NimBLE: GAP procedure initiated: advertise; 
+I (14266) NimBLE: disc_mode=2
+I (14266) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=32 adv_itvl_max=48
+I (14266) NimBLE: 
+
+I (14266) ble_gatt: advertising: svc 22587f80-334a-53d6-beb8-8a6ace31af07
+I (14266) ble_gatt: nimble host started (bond=1, MITM=0, MTU<=247)
+I (14266) sticks3: ble gatt init OK（等待主机连接配对）
+[12:44:06.972] I (15306) display: 屏幕就绪：ST7789 135x240 gap(52,40) invert 背光开，状态轮询启动
+I (15306) sticks3: display init OK（自检图案后进入状态轮询）
+I (15306) sticks3: free heap        : 8505699
+[12:44:16.685] I (25306) sticks3: hb: uptime=24s heap=8505699 audio_ready=0 ble_conn=0
+[12:44:26.897] I (35306) sticks3: hb: uptime=34s heap=8505699 audio_ready=0 ble_conn=0
+[12:44:36.553] I (45306) sticks3: hb: uptime=44s heap=8505699 audio_ready=0 ble_conn=0
+[12:44:46.746] I (55306) sticks3: hb: uptime=54s heap=8505699 audio_ready=0 ble_conn=0
+[12:44:56.936] I (65306) sticks3: hb: uptime=64s heap=8505699 audio_ready=0 ble_conn=0
+[12:45:06.607] I (75306) sticks3: hb: uptime=74s heap=8505699 audio_ready=0 ble_conn=0
+[12:45:16.802] I (85306) sticks3: hb: uptime=84s heap=8505699 audio_ready=0 ble_conn=0
+[12:45:26.977] I (95306) sticks3: hb: uptime=94s heap=8505699 audio_ready=0 ble_conn=0
+[12:45:36.594] I (105306) sticks3: hb: uptime=104s heap=8505699 audio_ready=0 ble_conn=0
+[12:45:46.685] I (115306) sticks3: hb: uptime=114s heap=8505699 audio_ready=0 ble_conn=0
+END 12:45:53

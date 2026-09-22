@@ -25,3 +25,6 @@ __pycache__/
 flash-artifacts/
 host/src/*.obj
 host/src/*.exe
+
+# 演示用捕获产物（可由 tools/make_synth_capture.py 重新生成，不入库）
+captures/

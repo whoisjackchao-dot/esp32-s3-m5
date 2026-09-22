@@ -1,0 +1,76 @@
+START 13:16:04
+OPEN 13:16:04.868
+[13:16:12.015] I (157) esp_image: segment 4: paddr=000bb054 vaddr=4037f2dc sizeI (13646) sticks3: hb: uptime=12s heap=8501939 audio_ready=1 ble_conn=0
+[13:16:21.727] I (23646) sticks3: hb: uptime=22s heap=8501939 audio_ready=1 ble_conn=0
+OPEN 13:16:32.468
+[13:16:32.801] I (920) esp_psram: SPI SRAM memory test OK
+I (929) cpu_start: Pro cpu start user code
+I (929) cpu_start: cpu freq: 160000000 Hz
+I (929) app_init: Application information:
+I (929) app_init: Project name:     sticks3
+I (930) app_init: App version:      2713fc9
+I (930) app_init: Compile time:     Sep 22 2026 11:14:10
+I (930) app_init: ELF file SHA256:  72529c8bc...
+I (930) app_init: ESP-IDF:          e48ca657
+I (930) efuse_init: Min chip rev:     v0.0
+I (930) efuse_init: Max chip rev:     v0.99 
+I (931) efuse_init: Chip rev:         v0.2
+I (931) heap_init: Initializing. RAM available for dynamic allocation:
+I (931) heap_init: At 3FCB5DC8 len 00033948 (206 KiB): RAM
+I (931) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (931) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (932) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (932) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (933) spi_flash: detected chip: gd
+I (933) spi_flash: flash io: dio
+W (934) i2c:
+[13:16:32.911]  This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
+I (934) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (935) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (936) main_task: Started on CPU0
+I (936) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (936) main_task: Calling app_main()
+I (936) sticks3: idf version      : e48ca657
+I (936) sticks3: chip model       : 9 (9 = ESP32-S3)
+I (936) sticks3: flash size bytes : 8388608
+I (936) sticks3: s3p_proto selftest: PASS (SV-01/02/03/05)
+I (966) pm1: PWR_CFG=0x17 (chg=1 dcdc=1 ldo=1 boost=0)
+I (966) pm1: PM1 device_id=0x50 (wdt/idle 已禁用)
+I (996) audio_capture: i2c scan ack: 0x18
+I (1006) audio_capture: i2c scan ack: 0x68
+I (1006) audio_capture: i2c scan ack: 0x6e
+I (1036) ES8311: ES8311 in Slave mode and I2S format
+I (1036) audio_capture: es8311 ready @0x18
+I (1046) audio_capture: es8311 ready (16kHz/16bit)
+I (1046) audio_c
+[13:16:33.421] apture: i2s rx running (MCLK18 BCLK17 WS15 DIN16)
+I (1526) sticks3: audio 1s: samples=15360 min=-2819 max=3183 avg=0
+[13:16:33.926] I (2006) sticks3: audio 2s: samples=15360 min=-2088 max=1600 avg=9
+[13:16:34.418] I (2486) sticks3: audio 3s: samples=15360 min=-740 max=660 avg=0
+I (2486) audio_session: opus 编码器就绪（16kHz 单声道 VOIP 24kbps 60ms）
+I (2486) sticks3: opus 会话层就绪
+I (2496) BLE_INIT: BT controller compile version [51d9dfd]
+I (2496) BLE_INIT: Using main XTAL as clock source
+I (2496) BLE_INIT: Feature Config, ADV:1, BLE_50:1, DTM:1, SCAN:1, CCA:0, SMP:1, CONNECT:1
+I (2496) BLE_INIT: Bluetooth MAC: XX:XX:XX:XX:XX:XX
+I (2496) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+I (2546) NimBLE: GAP procedure initiated: stop advertising.
+
+I (2546) NimBLE: GAP procedure initiated: stop advertising.
+
+I (2546) ble_gatt: host synced; preferred MTU 247 (rc=0)
+I (2546) NimBLE: GAP procedure initiated: advertise; 
+I (2546) NimBLE: disc_mode=2
+I (2546) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=32 adv_itvl_max=48
+I (2546) NimBLE: 
+
+I (2546) ble_gatt: advertising: svc 22587f80-334a-53d6-beb8-8a6ace31af07
+I (2546) ble_gatt: nimble host started (bo
+[13:16:34.926] nd=1, MITM=0, MTU<=247)
+I (2546) sticks3: ble gatt init OK（等待主机连接配对）
+[13:16:35.932] I (3596) display: 屏幕就绪：ST7789 135x240 gap(52,40) invert 背光开，状态轮询启动
+I (3596) sticks3: display init OK（自检图案后进入状态轮询）
+I (3596) sticks3: free heap        : 8501939
+[13:16:45.581] I (13596) sticks3: hb: uptime=12s heap=8501939 audio_ready=1 ble_conn=0
+[13:16:55.729] I (23596) sticks3: hb: uptime=22s heap=8501939 audio_ready=1 ble_conn=0
+[13:17:05.924] I (33596) sticks3: hb: uptime=32s heap=8501939 audio_ready=1 ble_conn=0
