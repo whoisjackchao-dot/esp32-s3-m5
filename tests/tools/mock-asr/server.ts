@@ -41,7 +41,7 @@ export interface MockAsrServer {
 }
 
 export async function createMockAsrServer(
-  _opts: { port?: number } = {},
+  opts: { port?: number; host?: string } = {},
 ): Promise<MockAsrServer> {
   let config: MockConfig = { scenario: "ok", text: DEFAULT_TEXT, delayMs: 0 };
   let last: RecordedRequest | null = null;
@@ -53,8 +53,8 @@ export async function createMockAsrServer(
     });
 
   const server = Bun.serve({
-    hostname: "127.0.0.1",
-    port: 0,
+    hostname: opts.host ?? "127.0.0.1",
+    port: opts.port ?? 0,
     idleTimeout: 30,
     async fetch(req) {
       const url = new URL(req.url);
