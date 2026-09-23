@@ -250,8 +250,7 @@ def main():
                                     st["end"]["totalFrames"], st["end"]["totalSamples"],
                                     ok_summary)
 
-    with open(args.out, "a", encoding="utf-8") as fh:
-        fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    append_record(args.out, record)
     lat = record["latency_s"]
     print("[{}] {} #{} latency={} delta={}ms frames={} summary_match={}".format(
         "OK" if record["ok"] else "FAIL", args.group, args.index,
