@@ -105,5 +105,52 @@ class TestEvaluate(unittest.TestCase):
         self.assertIn("| 5s |", text)
 
 
+class TestAnchorAndRecord(unittest.TestCase):
+    LINES = [
+        (1000, "I (4948) button: BtnA 按下"),
+        (5000, "I (9000) button: BtnA 松开"),
+        (5060, "I (9060) audio_session: 松键提前结束 seq=66"),
+        (5200, "I (9200) audio_session: END recID=1 frames=66 samples=63360"),
+    ]
+
+    def test_pick_early_anchor(self):
+        got = q.pick_anchor_ts(self.LINES, "5s", 2000)
+        self.assertEqual(got[0], 5000)
+        self.assertIn("BtnA 松开", got[1])
+
+    def test_pick_hardstop_anchor(self):
+        got = q.pick_anchor_ts(self.LINES, "30s", 2000)
+        self.assertEqual(got[0], 5200)
+        self.assertIn("END recID=", got[1])
+
+    def test_anchor_respects_begin_bound(self):
+        self.assertIsNone(q.pick_anchor_ts(self.LINES, "5s", 9000))
+
+    def test_anchor_missing_returns_none(self):
+        self.assertIsNone(q.pick_anchor_ts([], "5s", 0))
+
+    def test_delta_uses_serial_minus_ble_end(self):
+        self.assertEqual(q.serial_latency_delta_ms(self.LINES, 5100), 100)
+
+    def test_delta_none_without_end_line(self):
+        self.assertIsNone(q.serial_latency_delta_ms([(1, "no end here")], 0))
+
+    def test_build_record_ok(self):
+        r = q.build_record("5s", 1, t0_ms=5000, t1_ms=8000, br04_status="applied",
+                           delta_ms=100, end_frames=66, end_samples=63360,
+                           summary_match=True)
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["latency_s"], 3.0)
+
+    def test_build_record_failure_keeps_denominator(self):
+        r = q.build_record("5s", 2, t0_ms=5000, t1_ms=None, br04_status="timeout")
+        self.assertFalse(r["ok"])
+        self.assertIsNone(r["latency_s"])
+
+    def test_build_record_summary_mismatch_is_failure(self):
+        r = q.build_record("5s", 3, 5000, 8000, "applied", summary_match=False)
+        self.assertFalse(r["ok"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

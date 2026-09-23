@@ -16,6 +16,45 @@ EXPECTED_N = 20
 MIN_PASS = 19
 GROUPS = ("5s", "15s", "30s")
 
+ANCHOR_EARLY = "BtnA 松开"
+ANCHOR_HARDSTOP = "END recID="
+
+
+def pick_anchor_ts(lines, group, t_begin_ms):
+    """起点锚点：提前结束组取 'BtnA 松开'，30s 硬停组取 'END recID='。
+    lines 为 (ts_ms, text) 升序序列；返回首个 ts>=t_begin_ms 的匹配 (ts_ms, text)，无则 None。"""
+    key = ANCHOR_EARLY if group in ("5s", "15s") else ANCHOR_HARDSTOP
+    for ts, text in lines:
+        if ts >= t_begin_ms and key in text:
+            return (ts, text)
+    return None
+
+
+def serial_latency_delta_ms(lines, t_ble_end_ms):
+    """误差标定 Δ = 串口 END 行到达时刻 − BLE END 通知到达时刻（设备发射时刻相同）。"""
+    for ts, text in lines:
+        if ANCHOR_HARDSTOP in text:
+            return ts - t_ble_end_ms
+    return None
+
+
+def build_record(group, index, t0_ms, t1_ms, br04_status, delta_ms=None,
+                 end_frames=None, end_samples=None, summary_match=None):
+    """latency_s 仅在 t0/t1 齐备且 BR-04 applied 时给出；否则 None（失败仍进分母）。"""
+    ok = (t0_ms is not None and t1_ms is not None and br04_status == "applied"
+          and summary_match is not False)
+    latency_s = ((t1_ms - t0_ms) / 1000.0) if ok else None
+    return {
+        "group": group, "index": index,
+        "latency_s": latency_s,
+        "delta_ms": delta_ms,
+        "br04_status": br04_status,
+        "end_total_frames": end_frames,
+        "end_samples": end_samples,
+        "summary_match": summary_match,
+        "ok": ok,
+    }
+
 
 def nearest_rank_percentile(values, p):
     """nearest-rank 百分位：升序排序后取第 ceil(p/100*n) 个（1-based）。空集返回 None。"""
