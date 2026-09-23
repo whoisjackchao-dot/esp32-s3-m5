@@ -79,8 +79,12 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 
 **开工前待处理（本轮新发现，未处理）**：
 - `flash-artifacts/SHA256SUMS` 已陈旧：`bootloader.bin`、`sticks3.bin` 与实际哈希不一致（仅 `partition-table.bin` 一致）。当前 `sticks3.bin` SHA-256 = `8dbeced7dd16f8988ca11b2f9c1df0153738040b016e93d8feff143fc1477067`。交付前须重算登记。
-- 工作树未提交：`tools/bridge_env.ps1`（字段名修正为 `currentRouteSessionID`/`boundSessionID` + `canAppend` 推导，与插件 `BindingTarget` 实现一致）。建议提交后再开工，避免"已验证脚本 ≠ git 版本"。
 - `voice_slice.ps1` 仍以 `Read-Host` 手工输入 ASR Key，未走 C11 凭据管理器（故事 4 计划写的是"Key 由凭据管理器供给"）。不阻塞 M3 纵切，但属计划/实现的登记差异。
+
+**2026-09-23 13:46 会话登记（Sisyphus）**：
+- **发现**：13:39:12 起 ESP32 桥接插件被禁用（备份 `tui.json.bak-before-esp32-disable-20260923-133912`），当前 opencode 实例未加载插件 → `bridge.json`（13:26 残留）指向 `127.0.0.1:35961` 无监听、curl 失败；Windows 侧 45093 亦不可达。
+- **处置**：已恢复 `tui.json`（追加 `/mnt/c/Temp/ESP32-S3M5/plugin/src/index.ts`，保留 `oh-my-openagent@4.19.4`）；禁用态备份 `tui.json.bak-esp32-disabled-20260923-134645`。plugin `bun test` 61/61 通过（本轮实测）。
+- **下一步（已固化为指引文档）**：`tools/M3闭环执行指引-20260923.md` —— 重启 opencode → 验证插件加载 → `bridge_env.ps1` 点源 → `voice_slice.ps1` 采音 30s → `m3_manual_send_verify.ps1 -Existing` 目视+手动发送 → PASS 后归档证据并勾掉下方「待用户决定」第一条。
 
 若装载器报"找不到 bridge.json"：插件未加载成功，检查 OpenCode 启动输出是否有插件报错。
 > 注意：桥接在 WSL 内监听 127.0.0.1，Windows 侧经 WSL localhost 转发访问；若不通，改用 WSL IP（需同步改 `bridge_env.ps1` 的 URL 策略）。
