@@ -8,9 +8,13 @@
 static const char *TAG = "button";
 
 #define BUTTON_BTNA_GPIO GPIO_NUM_11
-#define BUTTON_POLL_MS 5
-/* 连续同电平样本数确认（≈20ms）。去抖为实施默认值，未经用户批准（Q06 待冻结）。 */
-#define BUTTON_STABLE_SAMPLES 4
+/* 轮询间隔须 ≥1 tick：CONFIG_FREERTOS_HZ=100 时 pdMS_TO_TICKS(5)=0 → vTaskDelay(0) 不退让，
+ * 会饿死 IDLE0 触发任务看门狗（2026-09-23 首次刷机实测命中）。 */
+#define BUTTON_POLL_MS 10
+/* 连续同电平样本数确认（≈30ms）。去抖为实施默认值，未经用户批准（Q06 待冻结）。 */
+#define BUTTON_STABLE_SAMPLES 3
+
+_Static_assert(pdMS_TO_TICKS(BUTTON_POLL_MS) >= 1, "BUTTON_POLL_MS 折算必须 >=1 tick");
 
 static button_event_cb_t s_on_press;
 static button_event_cb_t s_on_release;

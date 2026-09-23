@@ -113,8 +113,13 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
   - **固件**：新增 `button.c/.h`（BtnA=GPIO11 低电平按下；按住/松开，去抖≈20ms 为**未批准默认值**）；`audio_session` 增 `request_start/request_stop`，松开时以**实际帧数**发 END（无有效帧则发 DEVICE_CANCEL）；`main.c` 接线；`CMakeLists.txt` 登记。`source tools/idf-env.sh && idf.py build` **通过**。
   - **主机**：`s3p_reasm.c` 的 `!=` 改 `>` + 越界/缺片检查；`s3p_reasm_test.c` 新增 3 条提前结束用例；新增 `build_reasm.cmd`。**MSVC 实测 816 checks / 0 failures**（原 566）。
   - **契约/用例**：`contracts/M2-…`（v1.1 + 变更记录）、测试矩阵 **BLE-12** 同步。
-- **固件产物（本轮构建，未刷机）**：`sticks3.bin` size=769104，SHA-256=`b89b12527d15925cae9bc98479ec8549d8c511ce865c049e25fcd437867fb7e5`。刷机须**另行授权**；交付前重算 `flash-artifacts/SHA256SUMS`。
-- **明确未验证**：①固件松键路径**未刷机、未 HIL**（须授权刷写后按住/松开实测）；②`READY(0x10)` 仍为等价启动触发（M3 真机 UX 以按键为主，移交语义待确认）；③去抖值/长按阈值未批准。
+- **固件产物（本轮构建，已刷机）**：`sticks3.bin` SHA-256=`3835fb92753c9168601b9378b5657234c4d2cecdfddcea995ed5682bb59106f8`；上一版镜像存 `flash-artifacts/prev/` 可回滚。
+- **✅ 松键 HIL 已通过（2026-09-23 17:0x，真实设备）**：见 `evidence/M3/2026-09-23-松键提前结束HIL.md`。
+  - 提前结束：`BEGIN.frameCount=500` → `END.totalFrames=116`（≈6.96s），116/116 帧收齐，独立 FNV-1a 摘要 MATCH。
+  - 30s 硬停：`END.totalFrames=500`、`samples=480000`（30.00s），摘要 MATCH；未回归。
+  - 串口锚点（Q03 方案 B）：`BtnA 按下/松开` 均带主机时间戳 → 锚点机制可用。
+  - **HIL 命中真实缺陷并修复**：`pdMS_TO_TICKS(5)=0`（HZ=100）→ `vTaskDelay(0)` 忙等 → 任务看门狗循环；改 `BUTTON_POLL_MS=10` + `_Static_assert` 护栏，重刷后无 WDT。**编译期不可见，须 HIL**（教训已登记）。
+- **明确未验证**：①**Q03 时延未测**（"松键→TUI 填入 ≤5s"门槛，测量工具未建）；②`READY(0x10)` 仍为等价启动触发（移交语义待确认）；③去抖值(≈30ms)/长按阈值未批准；④侧键 BtnB(GPIO12) 未实现（归 M4）；⑤出厂备份缺失（设备早已非出厂态，未额外损失）。
 
 若装载器报"找不到 bridge.json"：插件未加载成功，检查 OpenCode 启动输出是否有插件报错。
 > 注意：桥接在 WSL 内监听 127.0.0.1，Windows 侧经 WSL localhost 转发访问；若不通，改用 WSL IP（需同步改 `bridge_env.ps1` 的 URL 策略）。
@@ -134,7 +139,7 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 - 未按计划/未覆盖：`voice_slice.ps1` 仍 `Read-Host` 手输 Key（未走 C11）；本次无托盘、非物理松键、设备状态屏 UNKNOWN（详见该证据 §7）。
 
 ### 未竟项
-- **M3 故事 4**：✅ **闭环已成立（2026-09-23 16:25，E2E-01p PASS）**；物理按键路径由本轮"提前结束增量"补齐，**待刷机 HIL 验证**
+- **M3 故事 4**：✅ **闭环已成立（2026-09-23 16:25，E2E-01p PASS）**；✅ **物理按键路径已 HIL 通过（2026-09-23 17:0x，提前结束+30s 硬停，见 `evidence/M3/2026-09-23-松键提前结束HIL.md`）**
 - M3 验收：30 条语料冻结 + 时延 60 次（Q03）+ 准确率 30 条（Q04）
   - Q03：计时方案已裁决（方案 B 串口外部观察，2026-09-23）；**测量工具待建**；松键固件已落地但**未 HIL**
   - Q04：语料与评分规则待冻结（用户提供/批准）
