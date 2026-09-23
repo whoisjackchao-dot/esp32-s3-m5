@@ -4,9 +4,14 @@
 > `/tmp/stick3-m1-spike/spike-evidence.log`，探针源码 `spike-plugin.ts`。
 > B01（可行性核查 §8："语音写入首要阻断门槛"）据此解除。
 >
-> **2026-09-23 修订（重要）**：§1.6 的"槽位 props 仅 {theme}"结论**有误**（探针读取位置
-> 错误），据此设计的 §3 首版配方（只传 ref、不转发宿主 props）导致 opencode 会话反复
-> 重置的严重故障。已更正 §1.6/§3 并新增 §5 根因记录与修复。opencode 1.18.32。
+> **2026-09-23 修订 A（首版修复，后证不足）**：§1.6 曾把"槽位 props 仅 {theme}"判为错误，
+> 据此设计的 §3 首版配方（只传 ref、不转发宿主 props）导致 opencode 会话反复重置的严重
+> 故障。首版更正了"要不要转发 props"，但**转发的参数位置仍然错**（见修订 B）。opencode 1.18.32。
+>
+> **2026-09-23 修订 B（二次修复，本次生效）**：方案 B 首版误把槽位 renderer 的**第 1 参**
+> `context`（仅 `{theme}`）当作宿主 props；实际 props 在**第 2 参** `data`（opencode solid
+> Slot 组件 `splitProps` 的 rest，二进制级证据）。首版上线后重启实测仍复现——"一个对话只能
+> 进行一轮"。已将 `buildSessionPromptSlot` 改为双参 `(context, data)` 并取第 2 参。§1.6/§3/§5 同步更正。
 
 ## 1. 实证结论（按证据强度排序）
 
@@ -23,11 +28,14 @@
    `{"inputLen":2,"input":"AB"}`。read/set 路径真实可用。
 5. **路由运行时形状**：主屏（新会话）即 `{"name":"home"}`；选择已有会话后仍未见
    `name:"session"` 独立路由——route 判别须按 M1 契约 §4.1 做运行时检查。
-6. ~~**槽位 props 不透传 ref/session_id**~~ **2026-09-23 更正**：宿主渲染 `session_prompt`
-   时**确实传入** `session_id`/`on_submit`/`visible`/`disabled`/`ref`（opencode 1.18.32
-   二进制级证据 + `tui.d.ts` `TuiHostSlotMap.session_prompt`）。2026-09-21 探针实测
-   "仅 `{"theme"}`" 是**错误结论**（读取位置错误，非槽位函数入参）。插件必须转发这些
-   props，否则会话内输入框退化为首页"新建会话"框（见 §5 故障）。
+6. **槽位 renderer 为双参 `(context, data)`（2026-09-23 二次更正，二进制级证据）**：
+   宿主渲染 `session_prompt` 时传入 `session_id`/`on_submit`/`visible`/`disabled`/`ref`，
+   opencode solid Slot 组件（`D9`：`let [picked,rest]=splitProps(props,[...])`）以
+   **`renderer(context, data)`** 调用插件 renderer：第 1 参 `context` 仅含 `{theme}`，
+   **第 2 参 `data`（splitProps 的 rest）才是上述宿主 props**。
+   2026-09-21 探针"仅 `{"theme"}`"实为**第 1 参 context**（结论本身对）；2026-09-23 上午的
+   "§1.6 更正"误判为"读取位置错误"，并把"须转发 props"错误地落在第 1 参上，直接导致方案 B
+   首版失效（见 §5 二次根因）。插件必须以第 2 参为 props 源。
 
 ## 2. 上游类型与运行时的两处不一致（已实测，建议上报上游）
 
@@ -40,13 +48,14 @@
 
 ```text
 .opencode/tui.json → {"plugin": ["<plugin/src/index.ts 绝对路径>"]}
-槽位 session_prompt（replace）→ 转发宿主 props 后渲染 api.ui.Prompt：
-    api.ui.Prompt({
-      sessionID: props.session_id, visible: props.visible,
-      disabled: props.disabled, onSubmit: props.on_submit,
-      ref: (r) => { props.ref?.(r); if (props.session_id) refs.capture(props.session_id, r); },
+槽位 session_prompt（replace）→ 以**双参 (context, data)** 渲染，从 data 取宿主 props：
+    (context, data) => api.ui.Prompt({
+      sessionID: data.session_id, visible: data.visible,
+      disabled: data.disabled, onSubmit: data.on_submit,
+      ref: (r) => { data.ref?.(r); if (data.session_id) refs.capture(data.session_id, r); },
     })
-  实现：src/plugin/slotPrompt.ts buildSessionPromptSlot；单测 test/slotPrompt.test.ts（8 用例）
+  实现：src/plugin/slotPrompt.ts buildSessionPromptSlot；单测 test/slotPrompt.test.ts（9 用例）
+  ⚠️ 切勿写成单参 `(props) => …`：第 1 参是 context（{theme}），props 在第 2 参。
 桥接：插件内 startBridge(127.0.0.1:0) → 地址+token 写 ~/.local/share/sticks3-opencode/bridge.json (0600)
 ```
 
@@ -81,3 +90,34 @@
 - 隔离 HOME 实例加载：bridge.json 写入、`/v1/health` `alive:true`、日志 0 ERROR/WARN。
 - **未覆盖（诚实边界）**：真实 TUI 下"回车不再新建会话"需重启 opencode 实测（会话视图
   渲染无法在无 provider 的隔离实例中触发）。
+
+### 5.1 二次修复（2026-09-23 14:xx，本次）
+
+**首版方案 B 上线后仍复现**：用户重启 opencode（插件在 14:14 重新加载，bridge.json 已更新、
+slot 注册未抛错）后，14:14–14:16 的每一次输入仍各落入一个独立新会话（`/dsh`×2、"授权，可以
+继续"、"重启了。还是相同问题"）——"一个对话只能进行一轮"未变。
+
+**二次根因（opencode 1.18.32 二进制级证据）**：插件槽位 renderer 的真实调用签名是
+**`renderer(context, data)`**——opencode solid Slot 组件：
+
+```js
+function D9(_){
+  let [J,$] = splitProps(_, ["registry","name","mode","children","pluginFailurePlaceholder"])
+  //          J=picked，$=rest（即 session_id/visible/disabled/on_submit/ref）
+  ...
+  F=(D,M)=>{ try{ I = D.renderer(Z().context, $) } ... }   // 插件函数收到 (context, rest)
+}
+```
+
+首版把第 1 参 `context`（仅 `{theme}`）当 props → `data.session_id`/`data.on_submit` 恒
+undefined → 渲染出的 `api.ui.Prompt` 无 sessionID/onSubmit → 退化为首页"新建会话"框。
+**§1.6 修订 A 之所以错，是因为只看了"宿主传给 `<Slot>` 的属性"，未看"Slot 组件转发给插件的
+参数形状"。**
+
+**二次修复**：`src/plugin/slotPrompt.ts` 的 `buildSessionPromptSlot` 改双参
+`(context, data)`，从第 2 参读取并转发 `session_id`/`on_submit`/`visible`/`disabled`/`ref`
+（ref 捕获语义不变）；`capture.ts` 的 `SlotRegistration.slots` 类型放宽为
+`(...args: unknown[]) => unknown` 以匹配真实双参调用。
+
+**验证**：`bun test` **70/70**（含"第 1 参 context 不得当 props"回归用例）、`tsc --noEmit`
+通过。**未覆盖（诚实边界）**：真实 TUI "回车不再新建会话、可多轮"仍需用户重启 opencode 实测。

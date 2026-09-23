@@ -93,6 +93,14 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 - **`flash-artifacts/SHA256SUMS` 已重算**：`bootloader.bin`、`sticks3.bin` 哈希对齐实际产物（该目录在 `.gitignore` 中，不入库）。
 - **⚠️ 插件修复的真实 TUI 验证未通过**：用户 14:16 重启后仍报告"会话反复重置"——方案 B 的隔离实例证据不足以覆盖真实 TUI 渲染；M3 闭环仍被此缺陷阻塞（另一会话正在排查，见下方"待用户决定"）。
 
+**2026-09-23 15:3x 会话登记（Sisyphus）——二次修复验证与登记（接上条"另一会话正在排查"）**：
+- **排查已出结论**：首版方案 B（`7e7142d`）**参数位置错误**——槽位 renderer 被上游以双参 `renderer(context, data)` 调用（第 1 参仅 `{theme}`），首版单参实现把 `{theme}` 当宿主 props，`session_id` 恒 undefined → 14:16 重启后必复发。
+- **二次修复已在工作区**（另一会话 14:23 写入）：`buildSessionPromptSlot` 改双参 `(context, data)` 从第 2 参取宿主 props；`capture.ts` 槽位类型改 `(...args: unknown[])`；测试同步。详见 `evidence/M3/2026-09-23-插件会话重置根因与修复.md` §9。
+- **二进制证据独立复核（本会话）**：从 opencode 1.18.32 二进制提取 `F=(D,M)=>{I=D.renderer(Z().context,$)}`、`replace` 模式 `D.map(S=>F(S))`、splitProps 剥离清单——与二次修复实现一致（证据同文档 §9.2）。
+- **验证（本会话实测）**：`bun test` **70/70**、`tsc --noEmit` PASS、隔离 HOME 实例 `bridge.json` 写入 + `/v1/health` `alive:true` + 日志 0 ERROR/WARN；隔离实例已清理。
+- **用户 15:33 重启的当前实例已加载二次修复代码**（`bridge.json` 15:33、tuiEpoch 更新）——**真实 TUI 验证可直接在当前会话进行**（连续发 ≥2 条消息，不跳会话即生效）。
+- 二次修复**尚未提交**（本地 commit 见下方提交边界）；push 仍需另行授权。
+
 若装载器报"找不到 bridge.json"：插件未加载成功，检查 OpenCode 启动输出是否有插件报错。
 > 注意：桥接在 WSL 内监听 127.0.0.1，Windows 侧经 WSL localhost 转发访问；若不通，改用 WSL IP（需同步改 `bridge_env.ps1` 的 URL 策略）。
 
@@ -118,7 +126,8 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 - 交付前：移除或显式登记诊断脚手架（见上节"交付前必做"）；重算 `flash-artifacts/SHA256SUMS`
 
 ### 待用户决定
-- **M3 用户价值闭环确认**：`E2E-01p` 已登记（2026-09-23）但**尚未运行**。**前置**：重启 opencode 后先验证会话不再跳转（插件修复生效，见上方 14:10 登记）；随后运行 `tools/m3_manual_send_verify.ps1` 并按提示目视确认 + 手动发送，回报结论；PASS 时由该脚本归档证据后再勾掉本条。本轮**不勾**（未运行 ≠ 闭环成立）。
+- **M3 用户价值闭环确认**：`E2E-01p` 已登记（2026-09-23）但**尚未运行**。**前置（已简化，2026-09-23 15:3x）**：当前实例（15:33 重启）**已加载二次修复代码**——先在当前会话连续发 ≥2 条消息验证"不跳会话、上下文保留"；通过后运行 `tools/m3_manual_send_verify.ps1` 并按提示目视确认 + 手动发送，回报结论；PASS 时由该脚本归档证据后再勾掉本条。本轮**不勾**（未运行 ≠ 闭环成立）。
+- **二次修复 push 授权**：修复已本地 commit 并验证至隔离级；是否 push 由用户授权。
 - **`flash-artifacts/SHA256SUMS` 重算**：**已于 2026-09-23 14:21 重算完成**（见上方登记）。原登记"仍待授权"，现履行。
 - M2 出口审查（工程判据已全绿，仅剩"用户看过演示与已知风险"一项，见 `evidence/M2/2026-09-22-M2演示执行记录.md` §9）
 
