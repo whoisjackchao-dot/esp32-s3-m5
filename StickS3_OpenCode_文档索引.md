@@ -52,7 +52,9 @@
 ### 本轮完成
 1. **采音时基修复（重大）**：根因 `I2S_SLOT_MODE_MONO` → WS 实际 32kHz → 2 倍拉伸；修复为 **STEREO 槽位 + 取左声道**。实测 `rate_probe` 32029/s → **16013/s**；真实语音经智谱 ASR 得到**正确中文**（两次验证）。详见 `evidence/M3/2026-09-23-采音时基诊断.md`。
 2. **M3 故事 4 纵切**：设备采音 → BLE → Opus → 解码 → ASR 全链验证通过；**仅剩"追加草稿"一跳**。
-3. **桥接插件已注册**到 WSL OpenCode（`~/.config/opencode/opencode.json[.jsonc]` 的 `plugin` 数组，已备份 `.bak-20260923`）——**需重启 OpenCode 生效**。
+3. **桥接插件已注册**到 WSL OpenCode 的 **`~/.config/opencode/tui.json`** 的 `plugin` 数组（已备份 `tui.json.bak-20260923`）——**需重启 OpenCode 生效**。
+   - 更正记录：该插件是 **TUI 插件**（`TuiPluginModule = { id?, tui, server?:never }`，`@opencode-ai/plugin/tui`），注册处是 `tui.json` 而非 `opencode.json` 的 server `plugin` 数组；一度加错位置，已撤回（`opencode.json[.jsonc]` 已还原备份）。
+   - 加载方式：OpenCode 用 `Bun.resolve(entry, ~/.config/opencode)` 解析后 `import()`；实测绝对路径与 `file://` 两种写法均可解析。
 4. 小智 KB 适用边界（`references/APPLICABILITY.md` + SKILL.md 收紧）；硬件文档附录 B 更新为"已解决"。
 
 ### 下一步（重启 OpenCode 后执行）
