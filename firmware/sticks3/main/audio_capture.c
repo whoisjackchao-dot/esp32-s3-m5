@@ -18,6 +18,10 @@ static const char *TAG = "audio_capture";
 #define AUDIO_I2S_WS GPIO_NUM_15
 #define AUDIO_I2S_DIN GPIO_NUM_16
 #define AUDIO_SAMPLE_RATE 16000
+/* MCLK 倍数：codec 与 I2S 必须一致。2026-09-23 时基排查候选 A（256→384）：
+ * 实测：候选 A(384) 仍不符（比值 2.56→2.00），coeff 表假设与实际不符；
+ * 待按 M5Unified 官方配置核对后定值（见 evidence/M3/2026-09-23-采音时基诊断.md）。 */
+#define AUDIO_MCLK_MULTIPLE 256u
 #define AUDIO_ES8311_ADDR ES8311_ADDRESS_0 /* 0x18：CE 拉低 */
 
 static i2s_chan_handle_t s_rx_chan;
@@ -73,7 +77,7 @@ static esp_err_t probe_codec_once(es8311_handle_t *out_codec) {
                     .mclk_inverted = false,
                     .sclk_inverted = false,
                     .mclk_from_mclk_pin = true,
-                    .mclk_frequency = 256u * AUDIO_SAMPLE_RATE,
+                    .mclk_frequency = AUDIO_MCLK_MULTIPLE * AUDIO_SAMPLE_RATE,
                     .sample_frequency = AUDIO_SAMPLE_RATE,
                 };
                 es_err = es8311_init(codec, &clk_cfg, ES8311_RESOLUTION_16,
@@ -157,6 +161,7 @@ esp_err_t audio_capture_init(void) {
             .invert_flags = {false, false, false},
         },
     };
+    std_cfg.clk_cfg.mclk_multiple = AUDIO_MCLK_MULTIPLE == 384 ? I2S_MCLK_MULTIPLE_384 : I2S_MCLK_MULTIPLE_256; /* 与 AUDIO_MCLK_MULTIPLE 保持一致 */
     err = i2s_channel_init_std_mode(s_rx_chan, &std_cfg);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "i2s std init: %s", esp_err_to_name(err));
@@ -171,6 +176,21 @@ esp_err_t audio_capture_init(void) {
              (unsigned long)AUDIO_I2S_MCLK, (unsigned long)AUDIO_I2S_BCLK,
              (unsigned long)AUDIO_I2S_WS, (unsigned long)AUDIO_I2S_DIN);
     return ESP_OK;
+}
+
+void audio_capture_log_clocks(void) {
+    if (s_rx_chan == NULL) {
+        ESP_LOGW(TAG, "clocks: i2s 未初始化");
+        return;
+    }
+    i2s_chan_info_t info = {0};
+    if (i2s_channel_get_info(s_rx_chan, &info) != ESP_OK) {
+        ESP_LOGW(TAG, "clocks: get_info 失败");
+        return;
+    }
+    ESP_LOGI(TAG, "clocks: clk_src=%d sclk=%luHz mclk=%luHz bclk=%luHz (期望 MCLK=4096000)",
+             (int)info.clk_src, (unsigned long)info.sclk_hz,
+             (unsigned long)info.mclk_hz, (unsigned long)info.bclk_hz);
 }
 
 esp_err_t audio_capture_read(int16_t *samples, size_t count, size_t *read_out) {

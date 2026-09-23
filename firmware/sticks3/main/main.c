@@ -108,6 +108,7 @@ void app_main(void) {
     }
 
     if (audio_capture_init() == ESP_OK) {
+        audio_capture_log_clocks();
         audio_path_evidence();
 
     } else {
@@ -137,8 +138,13 @@ void app_main(void) {
 
     /* 诊断心跳：USB-Serial-JTAG 在正常 boot 时重新枚举，启动日志在主机接入前丢失；
      * 周期心跳保证监控接入后必能观察到设备存活与子系统状态。 */
+    int hb_count = 0;
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(10000));
+        hb_count += 1;
+        if (hb_count % 3 == 0) {
+            audio_capture_log_clocks(); /* 周期输出：不依赖启动瞬间抓日志 */
+        }
         ESP_LOGI(TAG, "hb: uptime=%lus heap=%lu audio_ready=%d ble_conn=%d",
                  (unsigned long)(esp_timer_get_time() / 1000000),
                  (unsigned long)esp_get_free_heap_size(),
