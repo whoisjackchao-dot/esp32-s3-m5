@@ -126,7 +126,7 @@ static int fail(const char* what, const char* detail = "") {
     return 2;
 }
 
-/* DeviceInformation.Id: \\?\BTHLEDevice#{svc}_70041dd621d2#... — 提取 12 位 hex 地址 */
+/* DeviceInformation.Id: \\?\BTHLEDevice#{svc}_<MAC>#... — 提取 12 位 hex 地址（MAC 不入库，已掩码） */
 static uint64_t parse_addr_from_id(const winrt::hstring& id) {
     const std::wstring s(id.c_str(), id.size());
     const auto pos = s.find(L"_");
