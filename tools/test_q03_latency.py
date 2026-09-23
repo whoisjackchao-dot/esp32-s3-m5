@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Q03 判定核心单测（先红后绿的回归护栏）。运行：python -m unittest test_q03_latency"""
+import json
+import os
+import tempfile
 import unittest
 
 import q03_latency as q
@@ -150,6 +153,53 @@ class TestAnchorAndRecord(unittest.TestCase):
     def test_build_record_summary_mismatch_is_failure(self):
         r = q.build_record("5s", 3, 5000, 8000, "applied", summary_match=False)
         self.assertFalse(r["ok"])
+
+
+class TestLoadRecords(unittest.TestCase):
+    def _write(self, text):
+        fd, path = tempfile.mkstemp(suffix=".jsonl")
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        self.addCleanup(os.remove, path)
+        return path
+
+    def test_jsonl_roundtrip(self):
+        recs = [{"group": "5s", "latency_s": 1.0},
+                {"group": "5s", "latency_s": 2.0}]
+        path = self._write("\n".join(json.dumps(r) for r in recs) + "\n")
+        self.assertEqual(q.load_records(path), recs)
+
+    def test_json_array(self):
+        recs = [{"group": "15s", "latency_s": 1.5}]
+        path = self._write(json.dumps(recs))
+        self.assertEqual(q.load_records(path), recs)
+
+    def test_json_object_with_records(self):
+        recs = [{"group": "30s", "latency_s": 1.5}]
+        path = self._write(json.dumps({"records": recs}))
+        self.assertEqual(q.load_records(path), recs)
+
+    def test_trailing_blank_lines_ignored(self):
+        path = self._write('{"group": "5s", "latency_s": 1.0}\n\n\n')
+        recs = q.load_records(path)
+        self.assertEqual(len(recs), 1)
+        self.assertEqual(recs[0]["group"], "5s")
+
+    def test_single_jsonl_record_not_misread_as_dict(self):
+        path = self._write('{"group": "30s", "index": 3, "latency_s": 2.5}\n')
+        self.assertEqual(q.load_records(path),
+                         [{"group": "30s", "index": 3, "latency_s": 2.5}])
+
+    def test_empty_file(self):
+        self.assertEqual(q.load_records(self._write("   \n")), [])
+
+    def test_cli_accepts_jsonl(self):
+        recs = []
+        for g in q.GROUPS:
+            for _ in range(20):
+                recs.append({"group": g, "latency_s": 2.0, "delta_ms": 50})
+        path = self._write("\n".join(json.dumps(r) for r in recs) + "\n")
+        self.assertEqual(q.main(["q03_latency.py", path]), 0)
 
 
 if __name__ == "__main__":

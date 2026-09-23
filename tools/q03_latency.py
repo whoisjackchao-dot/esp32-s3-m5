@@ -131,13 +131,26 @@ def format_report(results):
     return "\n".join(lines)
 
 
+def load_records(path):
+    """读取 run records：兼容 JSONL（q03_run 逐行追加）、JSON 数组、{"records":[...]}。"""
+    with open(path, "r", encoding="utf-8") as fh:
+        text = fh.read().strip()
+    if not text:
+        return []
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return [json.loads(line) for line in text.splitlines() if line.strip()]
+    if isinstance(data, dict):
+        return data["records"] if "records" in data else [data]
+    return data
+
+
 def main(argv):
     if len(argv) < 2:
-        print("用法：python q03_latency.py records.json", file=sys.stderr)
+        print("用法：python q03_latency.py records.jsonl", file=sys.stderr)
         return 2
-    with open(argv[1], "r", encoding="utf-8") as fh:
-        data = json.load(fh)
-    records = data["records"] if isinstance(data, dict) and "records" in data else data
+    records = load_records(argv[1])
     try:
         results = evaluate(records)
     except ValueError as exc:
