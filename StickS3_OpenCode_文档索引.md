@@ -128,6 +128,7 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 - **实时编排**：`tools/q03_run.py`（单进程：串口线程 + BLE 采集{不发 READY} + 解码 + ASR/BR-04 计时；逐次写 run record JSONL）+ `tools/q03_run.ps1`（点源 `bridge_env.ps1`）。
 - **连接冒烟（本轮实测，无按键、无云调用）**：bridge 装载 OK（`canAppend=True`）→ 同进程串口+BLE 连接订阅 OK → BEGIN 超时**优雅失败** → 写 `ok=false` 记录（**保留分母**）、退出 1。冒烟命中并修复一真实缺陷：Windows Python stdout cp1252 致中文 `UnicodeEncodeError` 崩溃 → 加 `reconfigure(encoding="utf-8", errors="replace")`。
 - **战役编排**：`tools/q03_campaign.ps1`（Key 只输一次 → 自动跑 5/15/30s 各 20 次 → 末尾自动出 Q03 报告）。`.ps1` 补 **UTF-8 BOM**（项目惯例；无 BOM 时 PS 5.1 按 ANSI 读，中文会吞掉 `}` 致解析失败——本轮实测命中）。
+- **依赖与解码步核查（本轮实测）**：编排所用 Windows Python 依赖齐备（`av 18.1.0`、`pyserial 3.5`、`bleak` 可导入）；用既有捕获 `captures/slice/rec_1.s3pcap` 跑编排的解码命令 → `500 frames → 1440000 samples (48kHz) = 30.00s`，与既有证据一致。
 - **未竟**：Q03 **真实试点**（需用户按键 + 1 次云调用）未跑；通过后再跑 60 次正式测量（`q03_campaign.ps1`）。
 
 若装载器报"找不到 bridge.json"：插件未加载成功，检查 OpenCode 启动输出是否有插件报错。
