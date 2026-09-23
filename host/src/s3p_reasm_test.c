@@ -115,8 +115,8 @@ int main(void) {
         s3p_reasm_destroy(r);
     }
 
-    /* BLE-12：END 声明的帧数/样本数与实际不符 → 失败（不静默截短） */
-    TEST("BLE-12: END count mismatch fails");
+    /* BLE-12：END 声明多于 BEGIN 预告 → 失败（不得声多，反静默截短） */
+    TEST("BLE-12: END declared more than announced fails");
     {
         s3p_reasm_t *r = s3p_reasm_create(g_buf, sizeof(g_buf));
         uint8_t payload[4] = {7, 7, 7, 7};
@@ -124,8 +124,52 @@ int main(void) {
         for (uint32_t seq = 0; seq < 3u; seq += 1) {
             CHECK(s3p_reasm_feed(r, 1u, seq, 0u, 1u, payload, sizeof(payload)) == S3P_REASM_OK);
         }
-        /* 声称 5 帧实际 3 帧 → 完成判定失败并转 FAILED */
+        /* 声称 5 帧、预告 3 帧 → 失败 */
         CHECK(s3p_reasm_end(r, 1u, 5u, 5u * 960u, 0u) == S3P_REASM_FAILED);
+        s3p_reasm_destroy(r);
+    }
+
+    /* BLE-12/提前结束（2026-09-23 裁决）：预告 500，松键仅录 80 帧且收齐 → 合法 COMPLETE */
+    TEST("BLE-12: early stop END <= announced completes");
+    {
+        s3p_reasm_t *r = s3p_reasm_create(g_buf, sizeof(g_buf));
+        uint8_t payload[4] = {6, 6, 6, 6};
+        CHECK(s3p_reasm_begin(r, 1u, 500u, 16000u) == S3P_REASM_OK);
+        for (uint32_t seq = 0; seq < 80u; seq += 1) {
+            CHECK(s3p_reasm_feed(r, 1u, seq, 0u, 1u, payload, sizeof(payload)) == S3P_REASM_OK);
+        }
+        CHECK(s3p_reasm_end(r, 1u, 80u, 80u * 960u, 0u) == S3P_REASM_OK);
+        CHECK(s3p_reasm_is_complete(r));
+        CHECK(s3p_reasm_received_frames(r) == 80u);
+        s3p_reasm_destroy(r);
+    }
+
+    /* BLE-12/提前结束：END < 预告但 [0,END) 有缺片 → 不 COMPLETE，尾帧窗口超时失败 */
+    TEST("BLE-12: early stop with missing frame fails after timeout");
+    {
+        s3p_reasm_t *r = s3p_reasm_create(g_buf, sizeof(g_buf));
+        uint8_t payload[4] = {6, 6, 6, 6};
+        CHECK(s3p_reasm_begin(r, 1u, 500u, 16000u) == S3P_REASM_OK);
+        for (uint32_t seq = 0; seq < 80u; seq += 1) {
+            if (seq == 40u) continue;
+            CHECK(s3p_reasm_feed(r, 1u, seq, 0u, 1u, payload, sizeof(payload)) == S3P_REASM_OK);
+        }
+        CHECK(s3p_reasm_end(r, 1u, 80u, 80u * 960u, 0u) == S3P_REASM_WAITING);
+        CHECK(!s3p_reasm_is_complete(r));
+        CHECK(s3p_reasm_on_timeout(r, S3P_FRAME_DRAIN_TIMEOUT_MS + 1) == S3P_REASM_FAILED);
+        s3p_reasm_destroy(r);
+    }
+
+    /* BLE-12/提前结束：已收到 frameSeq ≥ END 声明 → 失败（声明与实际不一致） */
+    TEST("BLE-12: received frame beyond END declaration fails");
+    {
+        s3p_reasm_t *r = s3p_reasm_create(g_buf, sizeof(g_buf));
+        uint8_t payload[4] = {6, 6, 6, 6};
+        CHECK(s3p_reasm_begin(r, 1u, 500u, 16000u) == S3P_REASM_OK);
+        for (uint32_t seq = 0; seq < 81u; seq += 1) {
+            CHECK(s3p_reasm_feed(r, 1u, seq, 0u, 1u, payload, sizeof(payload)) == S3P_REASM_OK);
+        }
+        CHECK(s3p_reasm_end(r, 1u, 80u, 80u * 960u, 0u) == S3P_REASM_FAILED);
         s3p_reasm_destroy(r);
     }
 

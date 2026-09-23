@@ -51,9 +51,10 @@ s3p_reasm_rc_t s3p_reasm_feed(s3p_reasm_t *r, uint32_t recording_id, uint32_t fr
                               uint8_t frag_index, uint8_t frag_count,
                               const uint8_t *payload, uint16_t len);
 
-/* END 到达：与 BEGIN 宣告/实际接收一致性裁决（BLE-12）。
- * 完整 → COMPLETE/OK；不完整 → WAITING（尾帧窗口启动）；
- * END 声明与 BEGIN/实际不符 → FAILED。 */
+/* END 到达：与 BEGIN 宣告/实际接收一致性裁决（BLE-12，2026-09-23 裁决）。
+ * END.totalFrames 为权威实际帧数，须 ≤ BEGIN 预告上限（预告=上限，非等值）。
+ * 收齐 [0, END.totalFrames) → COMPLETE/OK；缺片 → WAITING（尾帧窗口启动）；
+ * 声明多于预告、或已收 frameSeq ≥ 声明 → FAILED。 */
 s3p_reasm_rc_t s3p_reasm_end(s3p_reasm_t *r, uint32_t recording_id, uint32_t total_frames,
                              uint32_t total_samples, uint32_t summary);
 

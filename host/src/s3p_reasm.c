@@ -130,11 +130,23 @@ s3p_reasm_rc_t s3p_reasm_end(s3p_reasm_t *r, uint32_t recording_id, uint32_t tot
     if (!r || r->state != S3P_REASM_STATE_ACTIVE) return S3P_REASM_NO_SESSION;
     if (recording_id != r->recording_id) return S3P_REASM_FOREIGN;
 
-    /* BLE-12：END 声明的帧数与 BEGIN 不一致 → 失败，不静默截短 */
-    if (total_frames != (uint32_t)r->frame_count) {
+    /* BLE-12（2026-09-23 裁决，契约 §3.2/§4）：END.totalFrames 为**权威实际帧数**，
+     * 必须 ≤ BEGIN 预告上限——契约 §3.2 明写"松开提前结束以 END 为准"，故预告是上限
+     * 而非等值约定。三条例外一律显式失败，保留"反静默截短"：
+     *   1) 声明多于预告 → 失败（不得声多）；
+     *   2) 已收到 frameSeq ≥ 声明值 → 失败（与声明不一致，不静默丢弃已收数据）；
+     *   3) 声明少于预告但 [0, 声明) 有缺片 → 不 COMPLETE（转 WAITING，超时失败）。 */
+    if (total_frames > (uint32_t)r->frame_count) {
         r->state = S3P_REASM_STATE_FAILED;
         return S3P_REASM_FAILED;
     }
+    for (uint16_t i = (uint16_t)total_frames; i < r->frame_count; i += 1) {
+        if (r->frames[i].initialized) {
+            r->state = S3P_REASM_STATE_FAILED;
+            return S3P_REASM_FAILED;
+        }
+    }
+    r->frame_count = (uint16_t)total_frames; /* END 为权威：收窄有效窗口 */
     if (s3p_reasm_is_complete(r)) {
         /* 冻结契约 §3.2：AUDIO 载荷为 Opus 字节，与 totalSamples（16kHz 采样数）
          * 不同单位，无法对账；END.totalSamples 由上层按 TX-18 阈值校验。

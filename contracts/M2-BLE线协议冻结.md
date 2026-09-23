@@ -1,7 +1,9 @@
 # M2 BLE 线协议冻结（StickS3 ↔ Windows 主机）
 
-> 状态：**M2 开工冻结草案 v1.0**（2026-09-21）。依据 [C07](../StickS3_OpenCode_契约与演进设计补充.md)、
-> [HLD §10](../StickS3_OpenCode_功能模块HLD.md)、[测试矩阵 §4](../StickS3_OpenCode_测试用例与追踪矩阵.md)。
+> 状态：**v1.1**（2026-09-23）。v1.0 于 2026-09-21 冻结；v1.1 仅澄清 BEGIN.frameCount 的
+> "预告上限"语义与 END 提前结束裁决（线格式未变，黄金向量不变）。依据
+> [C07](../StickS3_OpenCode_契约与演进设计补充.md)、[HLD §10](../StickS3_OpenCode_功能模块HLD.md)、
+> [测试矩阵 §4](../StickS3_OpenCode_测试用例与追踪矩阵.md)。
 > 本文件解除 C07 开工闸门：UUID/帧布局/字节序/限额/摘要/尾帧超时全部给出可测试取值。
 > 变更须走：改版本 → 更新两端解析与黄金向量 → 契约回归（C07 末条）。
 
@@ -40,7 +42,7 @@
 | 偏移 | 字段 | 宽度 | 说明 |
 | --- | --- | --- | --- |
 | 2 | recordingID | u32 | 设备生成，单调递增；重启回绕允许（bootID 隔离由重连握手承担） |
-| 6 | frameCount | u16 | 预告帧数（30s/60ms=500；松开提前结束以 END 为准） |
+| 6 | frameCount | u16 | **预告上限**（30s/60ms=500）；实际帧数以 `END.totalFrames` 为准，且须 ≤ 本值（§4） |
 | 8 | sampleRate | u16 | 16000 |
 | 10 | frameMs | u8 | 60 |
 | 11 | reserved | u8 | 0 |
@@ -79,6 +81,7 @@ errorCode：1=Opus 编码失败，2=缓冲耗尽，3=麦克风初始化失败，
 | 规则 | 冻结值 | 用例 |
 | --- | --- | --- |
 | BEGIN → AUDIO → END 顺序；END 先到 = 协议 violation | ERROR(4)，丢弃整段 | BLE-10 |
+| `END.totalFrames` vs BEGIN 预告 | END 为**权威实际帧数**，须 **≤** 预告；`> 预告` 或已收 `frameSeq ≥ 声明` → 整段失败；`< 预告`（松键提前结束）= 合法，但须收齐 `[0, 声明)` | BLE-12 |
 | 尾帧等待 `FRAME_DRAIN_TIMEOUT` | **2000 ms**，起点=END 收到时刻 | BLE-10/11 |
 | 重复 (frameSeq,fragIndex) | 忽略（仅记一次） | BLE-07 |
 | 同 ID 同序号内容冲突（fragLen 或 payload 前 8 字节不同） | 整段失败 ERROR | BLE-08 |
@@ -108,6 +111,30 @@ errorCode：1=Opus 编码失败，2=缓冲耗尽，3=麦克风初始化失败，
 
 不继承 zoe 8 位序号（30s500 帧会回绕）、voicestick `sm_bonding=0`（本项目强制 bond+加密）、
 两者均无 END 摘要——本协议补齐。无 OTA/HID（BLE-18）。
+
+---
+
+## 变更记录
+
+### v1.1（2026-09-23）：提前结束的权威帧数裁决
+
+**背景**：v1.0 §3.2 已写"松开提前结束以 END 为准"，但主机端 `s3p_reasm_end` 实现要求
+`END.totalFrames == BEGIN.frameCount`（严格相等），BLE-12 用例亦按"不符即失败"断言——
+契约与实现/用例冲突（"按下录音/松开结束"是 Q06 已批准的 M3 UX，5/15s 短录音依赖提前结束）。
+
+**裁决（用户 2026-09-23 确认，采纳建议）**：
+
+1. `BEGIN.frameCount` = **预告上限**（非等值约定）。
+2. `END.totalFrames` = **权威实际帧数**，须 ≤ 预告。
+3. 三条例外一律显式失败，保留原"反静默截短"意图：
+   - `END.totalFrames > 预告` → 失败（不得声多）；
+   - 已收 `frameSeq ≥ END.totalFrames` → 失败（声明与实际不一致）；
+   - `END.totalFrames < 预告` 但 `[0, END.totalFrames)` 有缺片 → 不 COMPLETE（转尾帧窗口，超时失败）。
+4. **线格式不变**：BEGIN/AUDIO/END 字节布局与黄金向量（§6）不受影响。
+
+**落地**：`host/src/s3p_reasm.c` 的 `!=` 判据改为 `>` + 越界/缺片检查；`host/src/s3p_reasm_test.c`
+新增 3 条提前结束用例（`816 checks, 0 failures`）；`firmware/.../audio_session.c` 松开时以实际
+帧数发 END；`firmware/.../button.c` 实现 BtnA(GPIO11) 按住/松开。BLE-12 用例语义同步见测试矩阵 §4。
 
 ---
 

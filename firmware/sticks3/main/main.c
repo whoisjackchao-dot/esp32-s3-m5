@@ -14,9 +14,18 @@
 #include "audio_capture.h"
 #include "audio_session.h"
 #include "ble_gatt.h"
+#include "button.h"
 #include "display.h"
 
 static const char *TAG = "sticks3";
+
+static void on_button_press(void) {
+    audio_session_request_start();
+}
+
+static void on_button_release(void) {
+    audio_session_request_stop();
+}
 
 static int proto_selftest(void) {
     uint8_t buf[S3P_END_LEN] = {0};
@@ -120,6 +129,13 @@ void app_main(void) {
         ESP_LOGI(TAG, "opus 会话层就绪");
     } else {
         ESP_LOGE(TAG, "audio session init FAILED");
+    }
+
+    if (button_init() == ESP_OK) {
+        button_set_handlers(on_button_press, on_button_release);
+        ESP_LOGI(TAG, "按键触发就绪：按住 BtnA 录音 / 松开结束");
+    } else {
+        ESP_LOGE(TAG, "button init FAILED");
     }
 
     if (ble_gatt_init() == ESP_OK) {

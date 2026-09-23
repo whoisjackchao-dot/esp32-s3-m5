@@ -13,8 +13,8 @@
 
 static const char *TAG = "audio_session";
 
-/* M2 满载会话：30 秒硬停（TX-02）= 500 帧 = 480000 样本；READY 触发后
- * 无按键停止通道前按满时长录制（按键触发为下一增量） */
+/* M2 会话上限：30 秒硬停（TX-02）= 500 帧 = 480000 样本。
+ * BEGIN 预告 500 为该上限；按键松开提前结束时 END 报实际帧数（契约 §3.2）。 */
 #define SESSION_FRAMES 500u
 
 static OpusEncoder *s_enc;
@@ -22,6 +22,7 @@ static TaskHandle_t s_task;
 static uint32_t s_rec_id;
 static volatile bool s_active;
 static volatile bool s_abort;
+static volatile bool s_stop_req;
 
 static int16_t s_pcm[S3P_SAMPLES_PER_FRAME];
 static uint8_t s_opus[512];
@@ -96,10 +97,15 @@ static void run_session(void) {
         max_frag = (uint16_t)(sizeof(s_pkt) - S3P_AUDIO_HDR_LEN);
     }
 
+    uint32_t frames_done = 0;
     for (uint32_t seq = 0; seq < SESSION_FRAMES; seq += 1) {
         if (s_abort) {
             ESP_LOGW(TAG, "会话中止（链路断开）seq=%lu", (unsigned long)seq);
             return;
+        }
+        if (s_stop_req) {
+            ESP_LOGI(TAG, "松键提前结束 seq=%lu", (unsigned long)seq);
+            break;
         }
         size_t got = 0;
         const esp_err_t rd = audio_capture_read(s_pcm, S3P_SAMPLES_PER_FRAME, &got);
@@ -147,11 +153,17 @@ static void run_session(void) {
             send_device_cancel(rec_id);
             return;
         }
+        frames_done = seq + 1;
+    }
+
+    if (frames_done == 0u) {
+        ESP_LOGW(TAG, "松开即止，无有效帧，会话作废");
+        send_device_cancel(rec_id);
+        return;
     }
 
     uint8_t end_buf[S3P_END_LEN];
-    (void)s3p_encode_end(end_buf, rec_id, SESSION_FRAMES, total_samples,
-                         summary);
+    (void)s3p_encode_end(end_buf, rec_id, frames_done, total_samples, summary);
     if (ble_gatt_notify_audio(end_buf, sizeof(end_buf)) != ESP_OK) {
         ESP_LOGE(TAG, "END 通知失败");
         return;
@@ -159,9 +171,9 @@ static void run_session(void) {
     ESP_LOGI(TAG,
              "END recID=%u frames=%lu samples=%lu opus=%luB (%luB/帧) "
              "summary=0x%08lx zcr=%lu/s 耗时=%lldms",
-             rec_id, (unsigned long)SESSION_FRAMES, (unsigned long)total_samples,
+             rec_id, (unsigned long)frames_done, (unsigned long)total_samples,
              (unsigned long)total_opus_bytes,
-             (unsigned long)(total_opus_bytes / SESSION_FRAMES),
+             (unsigned long)(total_opus_bytes / frames_done),
              (unsigned long)summary,
              (unsigned long)(total_samples > 1 ? (zc_count * 16000u) / total_samples : 0),
              (long long)(now_ms() - t0));
@@ -173,8 +185,22 @@ static void session_task(void *arg) {
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         s_active = true;
         s_abort = false;
+        s_stop_req = false;
         run_session();
         s_active = false;
+    }
+}
+
+void audio_session_request_start(void) {
+    if (s_task == NULL || s_active) {
+        return;
+    }
+    xTaskNotifyGive(s_task);
+}
+
+void audio_session_request_stop(void) {
+    if (s_active) {
+        s_stop_req = true;
     }
 }
 
@@ -214,7 +240,7 @@ esp_err_t audio_session_init(void) {
 void audio_session_on_ctrl(uint8_t msg_type, const uint8_t *data, uint16_t len) {
     (void)data;
     (void)len;
-    if (msg_type == 0x10 && s_task != NULL) {
-        xTaskNotifyGive(s_task);
+    if (msg_type == 0x10) {
+        audio_session_request_start();
     }
 }

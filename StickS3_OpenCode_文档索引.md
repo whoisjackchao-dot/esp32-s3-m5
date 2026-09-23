@@ -101,6 +101,21 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 - **用户 15:33 重启的当前实例已加载二次修复代码**（`bridge.json` 15:33、tuiEpoch 更新）——**真实 TUI 验证可直接在当前会话进行**（连续发 ≥2 条消息，不跳会话即生效）。
 - 二次修复**尚未提交**（本地 commit 见下方提交边界）；push 仍需另行授权。
 
+**2026-09-23 16:5x 会话登记（Sisyphus）——M3 闭环收尾 + 提前结束(松键)增量**
+
+- **M3 用户价值闭环证据已本地 commit**（`6158bbd`）：`evidence/M3/2026-09-23-162541-M3人工闭环确认.md` + 本文档更新。**仅本地，未 push**。
+- **Q03 计时链路调查结论（双阻塞，已核实）**：
+  - **P-A**：固件原**无松键停止**（`firmware/.../audio_session.c` 注释"按键触发为下一增量"）→ 5/15s 组无法录制。
+  - **P-B**：BLE `END(0x03)` 无时间戳 → "**批准的**跨端计时方案"未冻结。
+- **Q03 计时方案已裁决（用户 2026-09-23）：方案 B——串口日志外部观察**。起点锚点=设备 END 串口日志行（`device_log.py` 主机打戳）；终点=桥接 readback；须先做串口延迟标定并报告误差。**Q03 测量工具待建**（见"未竟项"）。
+- **跨端契约冲突已裁决（用户 2026-09-23）→ M2 契约升 v1.1**：`BEGIN.frameCount` = **预告上限**；`END.totalFrames` = **权威实际帧数**（≤ 预告）；`> 预告`／已收 `frameSeq ≥ 声明`／缺片 三种例外显式失败。**线格式与黄金向量不变**。详见 `contracts/M2-BLE线协议冻结.md` 变更记录。
+- **提前结束增量已落地（本轮实测）**：
+  - **固件**：新增 `button.c/.h`（BtnA=GPIO11 低电平按下；按住/松开，去抖≈20ms 为**未批准默认值**）；`audio_session` 增 `request_start/request_stop`，松开时以**实际帧数**发 END（无有效帧则发 DEVICE_CANCEL）；`main.c` 接线；`CMakeLists.txt` 登记。`source tools/idf-env.sh && idf.py build` **通过**。
+  - **主机**：`s3p_reasm.c` 的 `!=` 改 `>` + 越界/缺片检查；`s3p_reasm_test.c` 新增 3 条提前结束用例；新增 `build_reasm.cmd`。**MSVC 实测 816 checks / 0 failures**（原 566）。
+  - **契约/用例**：`contracts/M2-…`（v1.1 + 变更记录）、测试矩阵 **BLE-12** 同步。
+- **固件产物（本轮构建，未刷机）**：`sticks3.bin` size=769104，SHA-256=`b89b12527d15925cae9bc98479ec8549d8c511ce865c049e25fcd437867fb7e5`。刷机须**另行授权**；交付前重算 `flash-artifacts/SHA256SUMS`。
+- **明确未验证**：①固件松键路径**未刷机、未 HIL**（须授权刷写后按住/松开实测）；②`READY(0x10)` 仍为等价启动触发（M3 真机 UX 以按键为主，移交语义待确认）；③去抖值/长按阈值未批准。
+
 若装载器报"找不到 bridge.json"：插件未加载成功，检查 OpenCode 启动输出是否有插件报错。
 > 注意：桥接在 WSL 内监听 127.0.0.1，Windows 侧经 WSL localhost 转发访问；若不通，改用 WSL IP（需同步改 `bridge_env.ps1` 的 URL 策略）。
 
@@ -119,11 +134,13 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 - 未按计划/未覆盖：`voice_slice.ps1` 仍 `Read-Host` 手输 Key（未走 C11）；本次无托盘、非物理松键、设备状态屏 UNKNOWN（详见该证据 §7）。
 
 ### 未竟项
-- **M3 故事 4**：技术链路已 PASS 并归档；仅剩"用户手动发送"这一人的动作与最终闭环判定
+- **M3 故事 4**：✅ **闭环已成立（2026-09-23 16:25，E2E-01p PASS）**；物理按键路径由本轮"提前结束增量"补齐，**待刷机 HIL 验证**
 - M3 验收：30 条语料冻结 + 时延 60 次（Q03）+ 准确率 30 条（Q04）
+  - Q03：计时方案已裁决（方案 B 串口外部观察，2026-09-23）；**测量工具待建**；松键固件已落地但**未 HIL**
+  - Q04：语料与评分规则待冻结（用户提供/批准）
 - **登记差异**：`voice_slice.ps1` 的 ASR Key 接入 C11 凭据管理器（故事 4 计划写的是"凭据管理器供给"）
 - M4：状态屏三页 UI、托盘、USB/电池策略（**C11 凭据管理器核心已落地**：`asr_cred_tool`，TDD 21/21，见 `evidence/M3/2026-09-22-M3故事2-3完成记录.md`；托盘设置流归 M4）
-- 交付前：移除或显式登记诊断脚手架（见上节"交付前必做"）；重算 `flash-artifacts/SHA256SUMS`
+- 交付前：移除或显式登记诊断脚手架（见上节"交付前必做"）；重算 `flash-artifacts/SHA256SUMS`（固件已更新，新 SHA 见 16:5x 登记）
 
 ### 待用户决定
 - **M3 用户价值闭环确认**：**✅ 已成立（2026-09-23 16:25，E2E-01p PASS）**——见上方 16:2x 会话登记。原"待运行"登记作废，由真实证据取代。
