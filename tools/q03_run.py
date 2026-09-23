@@ -22,6 +22,8 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 import q03_latency as q  # noqa: E402
 
@@ -33,6 +35,11 @@ CAP_DIR = os.path.join(os.path.dirname(HERE), "captures", "q03")
 
 def now_ms():
     return time.monotonic() * 1000.0
+
+
+def append_record(path, record):
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
 def le16(d, o):
@@ -87,7 +94,7 @@ class SerialAnchor:
             pass
 
 
-async def ble_capture(timeout_end_s):
+async def ble_capture(timeout_begin_s, timeout_end_s):
     from bleak import BleakScanner, BleakClient
     devs = await BleakScanner.discover(timeout=8.0, return_adv=True)
     target = None
@@ -128,7 +135,7 @@ async def ble_capture(timeout_end_s):
         audio = client.services.get_characteristic(CHR_AUDIO)
         await client.start_notify(audio, on_audio)
         print("[OK] 已连接订阅（未发 READY）。请按住 BtnA 讲话后松开 …", flush=True)
-        await asyncio.wait_for(st["begin_evt"].wait(), timeout=120.0)
+        await asyncio.wait_for(st["begin_evt"].wait(), timeout=timeout_begin_s)
         await asyncio.wait_for(st["end_evt"].wait(), timeout=timeout_end_s)
     return st
 
@@ -190,10 +197,9 @@ def main():
     ap.add_argument("--port", default="COM5")
     ap.add_argument("--out", default=os.path.join(CAP_DIR, "records.jsonl"))
     ap.add_argument("--end-timeout", type=float, default=45.0)
+    ap.add_argument("--begin-timeout", type=float, default=120.0)
     args = ap.parse_args()
 
-    if not os.environ.get("STICKS3_ASR_KEY"):
-        os.environ["STICKS3_ASR_KEY"] = getpass.getpass("智谱API Key（隐藏输入）: ")
     missing = [v for v in ("STICKS3_BRIDGE_URL", "STICKS3_BRIDGE_TOKEN",
                            "STICKS3_TUI_EPOCH", "STICKS3_SESSION_ID")
                if not os.environ.get(v)]
@@ -205,11 +211,14 @@ def main():
     serial_anchor = SerialAnchor(args.port)
     time.sleep(1.5)  # 串口打开后留出稳定时间，再开始 BLE 扫描
     try:
-        st = asyncio.run(ble_capture(args.end_timeout))
+        st = asyncio.run(ble_capture(args.begin_timeout, args.end_timeout))
     except Exception as exc:
         serial_anchor.close()
         print("[FAIL] BLE 采集: {!r}".format(exc))
-        return 2
+        record = q.build_record(args.group, args.index, None, None, "ble_capture_fail")
+        append_record(args.out, record)
+        print("[FAIL] {} #{} latency=-（失败记录已写入，保留分母）".format(args.group, args.index))
+        return 1
     time.sleep(1.0)  # 等串口 END 行到达
     serial_anchor.close()
 
@@ -234,6 +243,8 @@ def main():
                                     delta, st["end"]["totalFrames"], st["end"]["totalSamples"],
                                     ok_summary)
         else:
+            if not os.environ.get("STICKS3_ASR_KEY"):
+                os.environ["STICKS3_ASR_KEY"] = getpass.getpass("智谱API Key（隐藏输入）: ")
             t1, status = run_append(wav)
             record = q.build_record(args.group, args.index, t0, t1, status, delta,
                                     st["end"]["totalFrames"], st["end"]["totalSamples"],

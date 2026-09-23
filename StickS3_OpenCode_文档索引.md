@@ -121,6 +121,14 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
   - **HIL 命中真实缺陷并修复**：`pdMS_TO_TICKS(5)=0`（HZ=100）→ `vTaskDelay(0)` 忙等 → 任务看门狗循环；改 `BUTTON_POLL_MS=10` + `_Static_assert` 护栏，重刷后无 WDT。**编译期不可见，须 HIL**（教训已登记）。
 - **明确未验证**：①**Q03 时延未测**（"松键→TUI 填入 ≤5s"门槛，测量工具未建）；②`READY(0x10)` 仍为等价启动触发（移交语义待确认）；③去抖值(≈30ms)/长按阈值未批准；④侧键 BtnB(GPIO12) 未实现（归 M4）；⑤出厂备份缺失（设备早已非出厂态，未额外损失）。
 
+**2026-09-23 17:2x 会话登记（Sisyphus）——Q03 工具链落地**
+
+- **契约**：`contracts/M3-Q03时延测量契约.md` **已批准 v1.0**（方案B；起点=设备串口会话结束行／主机时钟，终点=BR-04 `applied`／主机时钟；**无跨端钟换算**；Δ=BLE vs 串口 END 到达差；灰区不自动放行）。§6 已批准：**60 次真实云调用授权（预算上限 60 次）**、锚点行选择、并口采样、Δ 标定、30s 起点、落点。
+- **判定核心**：`tools/q03_latency.py` + `tools/test_q03_latency.py`（**28 用例**，`python3 -m unittest` 全绿）：nearest-rank P50/P95、每组 ≥19/20、失败保留分母、锚点/Δ/记录构造。
+- **实时编排**：`tools/q03_run.py`（单进程：串口线程 + BLE 采集{不发 READY} + 解码 + ASR/BR-04 计时；逐次写 run record JSONL）+ `tools/q03_run.ps1`（点源 `bridge_env.ps1`）。
+- **连接冒烟（本轮实测，无按键、无云调用）**：bridge 装载 OK（`canAppend=True`）→ 同进程串口+BLE 连接订阅 OK → BEGIN 超时**优雅失败** → 写 `ok=false` 记录（**保留分母**）、退出 1。冒烟命中并修复一真实缺陷：Windows Python stdout cp1252 致中文 `UnicodeEncodeError` 崩溃 → 加 `reconfigure(encoding="utf-8", errors="replace")`。
+- **未竟**：Q03 **真实试点**（需用户按键 + 1 次云调用）未跑；通过后再排 60 次正式测量（5/15/30s 各 20）。
+
 若装载器报"找不到 bridge.json"：插件未加载成功，检查 OpenCode 启动输出是否有插件报错。
 > 注意：桥接在 WSL 内监听 127.0.0.1，Windows 侧经 WSL localhost 转发访问；若不通，改用 WSL IP（需同步改 `bridge_env.ps1` 的 URL 策略）。
 
@@ -141,7 +149,7 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 ### 未竟项
 - **M3 故事 4**：✅ **闭环已成立（2026-09-23 16:25，E2E-01p PASS）**；✅ **物理按键路径已 HIL 通过（2026-09-23 17:0x，提前结束+30s 硬停，见 `evidence/M3/2026-09-23-松键提前结束HIL.md`）**
 - M3 验收：30 条语料冻结 + 时延 60 次（Q03）+ 准确率 30 条（Q04）
-  - Q03：计时方案已裁决（方案 B 串口外部观察，2026-09-23）；**测量工具待建**；松键固件已落地但**未 HIL**
+  - Q03：计时方案已裁决并冻结（方案B 串口外部观察，`contracts/M3-Q03时延测量契约.md` 已批准）；**工具链已建**（判定核心 28 单测 + 实时编排，连接冒烟通过）；**真实测量（试点/60次）仍未跑**，阻塞于用户按键与云调用
   - Q04：语料与评分规则待冻结（用户提供/批准）
 - **登记差异**：`voice_slice.ps1` 的 ASR Key 接入 C11 凭据管理器（故事 4 计划写的是"凭据管理器供给"）
 - M4：状态屏三页 UI、托盘、USB/电池策略（**C11 凭据管理器核心已落地**：`asr_cred_tool`，TDD 21/21，见 `evidence/M3/2026-09-22-M3故事2-3完成记录.md`；托盘设置流归 M4）
