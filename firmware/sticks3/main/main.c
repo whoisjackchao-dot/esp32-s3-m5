@@ -109,6 +109,7 @@ void app_main(void) {
 
     if (audio_capture_init() == ESP_OK) {
         audio_capture_log_clocks();
+        audio_capture_probe_rate(1000);
         audio_path_evidence();
 
     } else {

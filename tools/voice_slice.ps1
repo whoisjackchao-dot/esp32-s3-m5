@@ -14,7 +14,7 @@ New-Item -ItemType Directory -Force -Path $capDir | Out-Null
 
 $need = 'STICKS3_BRIDGE_URL', 'STICKS3_BRIDGE_TOKEN', 'STICKS3_TUI_EPOCH', 'STICKS3_SESSION_ID'
 $missing = $need | Where-Object { -not (Get-Item "Env:$_" -ErrorAction SilentlyContinue) }
-if ($missing) { throw "缺少环境变量: $($missing -join ', ')" }
+if ($missing) { Write-Host "提示：桥接变量缺失（$($missing -join ', ')），本次仅做 ASR 识别、不追加草稿" -ForegroundColor Yellow }
 
 $s = Read-Host '智谱API Key（隐藏输入）' -AsSecureString
 $env:STICKS3_ASR_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR(

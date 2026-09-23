@@ -94,9 +94,13 @@ int wmain(int argc, wchar_t** argv) {
     const bool hasEpoch = ok;
     const std::string session = envOrUtf8(L"STICKS3_SESSION_ID", ok);
     const bool hasSession = ok;
-    if (!hasKey || !hasUrl || !hasToken || !hasEpoch || !hasSession) {
-        std::fprintf(stderr, "缺少环境变量: STICKS3_ASR_KEY / BRIDGE_URL / TOKEN / TUI_EPOCH / SESSION_ID\n");
+    if (!hasKey) {
+        std::fprintf(stderr, "缺少环境变量: STICKS3_ASR_KEY\n");
         return 2;
+    }
+    const bool haveBridge = hasUrl && hasToken && hasEpoch && hasSession;
+    if (!haveBridge) {
+        std::printf("[INFO] 桥接变量缺失：仅做 ASR 识别（不追加草稿）\n");
     }
 
     // ① 读 WAV
@@ -159,6 +163,10 @@ int wmain(int argc, wchar_t** argv) {
     }
     printf("text: %s\n", text);
 
+    if (!haveBridge) {
+        printf("[PASS] ASR-only 模式完成（未追加草稿）\n");
+        return 0;
+    }
     // ③ 桥接追加（仅 loopback，契约 BR；10s 接收上限）
     const std::string prefix = "http://";
     if (url.rfind(prefix, 0) != 0) { std::fprintf(stderr, "BRIDGE_URL 必须以 http:// 开头\n"); return 2; }

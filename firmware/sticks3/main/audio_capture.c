@@ -6,6 +6,7 @@
 #include "driver/i2s_std.h"
 #include "es8311.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "pm1.h"
 
@@ -151,7 +152,10 @@ esp_err_t audio_capture_init(void) {
     }
     i2s_std_config_t std_cfg = {
         .clk_cfg = I2S_STD_CLK_DEFAULT_CONFIG(AUDIO_SAMPLE_RATE),
-        .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO),
+        /* STEREO 而非 MONO（2026-09-23 实测）：MONO 槽位使帧宽=1×16 位，
+         * WS 变为 BCLK/16=32kHz，而全链按 16kHz → 2 倍拉伸（tone 1kHz→500Hz）。
+         * STEREO 帧宽 2×16=32 位 → WS=16kHz；读取时取左声道。 */
+        .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
         .gpio_cfg = {
             .mclk = AUDIO_I2S_MCLK,
             .bclk = AUDIO_I2S_BCLK,
@@ -193,9 +197,34 @@ void audio_capture_log_clocks(void) {
              (unsigned long)info.mclk_hz, (unsigned long)info.bclk_hz);
 }
 
+uint32_t audio_capture_probe_rate(uint32_t window_ms) {
+    static int16_t buf[960];
+    if (s_rx_chan == NULL) return 0;
+    const int64_t t0 = esp_timer_get_time();
+    uint32_t total = 0;
+    while ((esp_timer_get_time() - t0) < (int64_t)window_ms * 1000) {
+        size_t got = 0;
+        if (audio_capture_read(buf, 960, &got) != ESP_OK) break;
+        total += (uint32_t)got;
+    }
+    const int64_t dt = esp_timer_get_time() - t0;
+    const uint32_t rate = dt > 0 ? (uint32_t)((uint64_t)total * 1000000ull / (uint64_t)dt) : 0;
+    ESP_LOGI(TAG, "rate_probe: %lu samples in %lldms -> %lu/s (期望 16000)",
+             (unsigned long)total, (long long)(dt / 1000), (unsigned long)rate);
+    return rate;
+}
+
 esp_err_t audio_capture_read(int16_t *samples, size_t count, size_t *read_out) {
+    static int16_t stereo[2 * 960];
+    if (count > 960) count = 960;
     size_t bytes_read = 0;
-    const esp_err_t err = i2s_channel_read(s_rx_chan, samples, count * sizeof(int16_t), &bytes_read, pdMS_TO_TICKS(2000));
-    if (read_out) *read_out = bytes_read / sizeof(int16_t);
+    const esp_err_t err = i2s_channel_read(s_rx_chan, stereo,
+                                           count * 2 * sizeof(int16_t), &bytes_read,
+                                           pdMS_TO_TICKS(2000));
+    const size_t frames = bytes_read / (2 * sizeof(int16_t));
+    for (size_t i = 0; i < frames; i += 1) {
+        samples[i] = stereo[i * 2];
+    }
+    if (read_out) *read_out = frames;
     return err;
 }
