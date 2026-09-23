@@ -86,7 +86,12 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 - **根因（二进制级）**：插件首版实现**未转发宿主 `session_prompt` props**（`session_id`/`on_submit`/`visible`/`disabled`/`ref`），使会话内输入框退化为"首页新建会话"框——每次回车新建会话、变空会话、上下文丢失（11:18 起重启风暴）。证据：`evidence/M3/2026-09-23-插件会话重置根因与修复.md`。
 - **修复（方案 B）**：新增 `plugin/src/plugin/slotPrompt.ts`（`buildSessionPromptSlot` 转发全部宿主 props + ref 捕获）、`plugin/src/index.ts` 接入、`plugin/test/slotPrompt.test.ts` 8 用例。验证：`bun test` **69/69**、`tsc --noEmit` 通过、隔离 HOME 实例 `/v1/health alive:true` 且 0 ERROR/WARN（本轮实测）。
 - **跨文档修订**：`plugin/spike/FINDINGS.md` §1.6/§3 更正（首版"仅传 ref"配方被证伪）+ §5 新增。
-- **⚠️ 重启前置（未完成）**：重启 opencode 后**先验证**"连续发两条消息停留同一会话、不跳空会话"，验证通过后再执行 `tools/M3闭环执行指引-20260923.md` 的 M3 闭环步骤。
+  - **⚠️ 重启前置（未完成）**：重启 opencode 后**先验证**"连续发两条消息停留同一会话、不跳空会话"，验证通过后再执行 `tools/M3闭环执行指引-20260923.md` 的 M3 闭环步骤。
+
+**2026-09-23 14:21 会话登记（Sisyphus）——推送与 SHA256SUMS（用户授权"授权，可以继续"）**：
+- **推送已执行**：`b27d9d6..7e7142d main -> main`，`origin/main` 已与本地同步。含 `7e7142d` 插件修复、`E2E-01p` 脚本、M3 纵切证据与文档。推送前敏感扫描：无 MAC/密钥；远端仓库 PRIVATE。
+- **`flash-artifacts/SHA256SUMS` 已重算**：`bootloader.bin`、`sticks3.bin` 哈希对齐实际产物（该目录在 `.gitignore` 中，不入库）。
+- **⚠️ 插件修复的真实 TUI 验证未通过**：用户 14:16 重启后仍报告"会话反复重置"——方案 B 的隔离实例证据不足以覆盖真实 TUI 渲染；M3 闭环仍被此缺陷阻塞（另一会话正在排查，见下方"待用户决定"）。
 
 若装载器报"找不到 bridge.json"：插件未加载成功，检查 OpenCode 启动输出是否有插件报错。
 > 注意：桥接在 WSL 内监听 127.0.0.1，Windows 侧经 WSL localhost 转发访问；若不通，改用 WSL IP（需同步改 `bridge_env.ps1` 的 URL 策略）。
@@ -114,7 +119,8 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 
 ### 待用户决定
 - **M3 用户价值闭环确认**：`E2E-01p` 已登记（2026-09-23）但**尚未运行**。**前置**：重启 opencode 后先验证会话不再跳转（插件修复生效，见上方 14:10 登记）；随后运行 `tools/m3_manual_send_verify.ps1` 并按提示目视确认 + 手动发送，回报结论；PASS 时由该脚本归档证据后再勾掉本条。本轮**不勾**（未运行 ≠ 闭环成立）。
-- **`flash-artifacts/SHA256SUMS` 重算**：**仍待授权**。本轮仅按授权提交 `tools/bridge_env.ps1` 等未提交项；SHA256SUMS 未重算、未改动（该目录在 `.gitignore` 中）。
+- **`flash-artifacts/SHA256SUMS` 重算**：**已于 2026-09-23 14:21 重算完成**（见上方登记）。原登记"仍待授权"，现履行。
 - M2 出口审查（工程判据已全绿，仅剩"用户看过演示与已知风险"一项，见 `evidence/M2/2026-09-22-M2演示执行记录.md` §9）
 
 > **本轮提交边界（2026-09-23）**：仅本地 commit（`tools/bridge_env.ps1` 字段对齐、`E2E-01p` 用例与脚本、M3 纵切证据与本文档更新）；**不含 push / GitHub 发布**（推送不在本轮授权内）。设备 MAC 已按项目"不入库 MAC"惯例掩码后入库。
+> **2026-09-23 14:21 补**：用户授权"授权，可以继续"后**已推送** `b27d9d6..7e7142d main -> main`（私有仓库）。GitHub 发布（Release / 公开化）仍不在授权内。
