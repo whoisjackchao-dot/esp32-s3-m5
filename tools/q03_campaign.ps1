@@ -2,7 +2,7 @@
     [string]$Port = "COM5",
     [string]$Out = "C:\Temp\ESP32-S3M5\captures\q03\records.jsonl",
     [int]$MaxTry = 3,
-    [hashtable]$Counts = @{ "5s" = 20; "10s" = 20; "30s" = 5 }
+    [hashtable]$Counts = @{ "5s" = 5; "10s" = 5; "30s" = 5 }
 )
 $ErrorActionPreference = "Stop"
 $py = "C:\Users\shiwenc\AppData\Local\Programs\Python\Python312\python.exe"

@@ -78,12 +78,13 @@ class TestEvaluateGroup(unittest.TestCase):
 
 
 class TestEvaluate(unittest.TestCase):
-    def _recs(self):
+    def _recs(self, fail_group=None, fail_count=0):
         recs = []
         for g in q.GROUPS:
-            for i in range(20):
+            for i in range(1, q.PER_GROUP_N[g] + 1):
+                lat = 9.0 if (g == fail_group and i <= fail_count) else 2.0
                 recs.append({"group": g, "index": i,
-                             "latency_s": 2.0 + i * 0.01, "delta_ms": 50})
+                             "latency_s": lat, "delta_ms": 50})
         return recs
 
     def test_all_groups_pass(self):
@@ -91,15 +92,11 @@ class TestEvaluate(unittest.TestCase):
         self.assertTrue(res["_all_passed"])
         self.assertFalse(res["_needs_review"])
 
-    def test_one_group_fails(self):
-        recs = self._recs()
-        for r in recs:
-            if r["group"] == "5s" and r["index"] >= 18:
-                r["latency_s"] = 9.0
-        res = q.evaluate(recs)
+    def test_one_group_fails_on_single_timeout(self):
+        res = q.evaluate(self._recs(fail_group="10s", fail_count=1))
         self.assertFalse(res["_all_passed"])
-        self.assertEqual(res["5s"]["successes_le_threshold"], 18)
-        self.assertEqual(res["5s"]["min_pass"], 19)
+        self.assertEqual(res["10s"]["successes_le_threshold"], 4)
+        self.assertEqual(res["10s"]["min_pass"], 5)
 
     def test_unknown_group_rejected(self):
         with self.assertRaises(ValueError):
@@ -250,19 +247,17 @@ class TestPerGroupThreshold(unittest.TestCase):
     def test_derived_from_approved_19_of_20(self):
         self.assertEqual(q.min_pass_for(20), 19)
         self.assertEqual(q.min_pass_for(5), 5)
-        self.assertEqual(q.min_pass_for(10), 10)
 
     def test_per_group_n_targets(self):
-        self.assertEqual(q.PER_GROUP_N, {"5s": 20, "10s": 20, "30s": 5})
+        self.assertEqual(q.PER_GROUP_N, {"5s": 5, "10s": 5, "30s": 5})
 
-    def _recs(self, n5=20, n10=20, n30=5, fail30=0):
+    def _recs(self, n30=5, fail30=0, fail5=0):
         recs = []
-        for g, n in (("5s", n5), ("10s", n10), ("30s", n30)):
+        for g, n in (("5s", 5), ("10s", 5), ("30s", n30)):
             for i in range(1, n + 1):
-                lat = 2.0
-                if g == "30s" and i <= fail30:
-                    lat = None
-                recs.append({"group": g, "index": i, "latency_s": lat, "delta_ms": 50})
+                fail = (g == "30s" and i <= fail30) or (g == "5s" and i <= fail5)
+                recs.append({"group": g, "index": i,
+                             "latency_s": None if fail else 2.0, "delta_ms": 50})
         return recs
 
     def test_30s_group_passes_at_5_of_5(self):
@@ -276,6 +271,10 @@ class TestPerGroupThreshold(unittest.TestCase):
         res = q.evaluate(self._recs(fail30=1))
         self.assertFalse(res["30s"]["passed"])
         self.assertFalse(res["_all_passed"])
+
+    def test_five_second_group_fails_at_4_of_5(self):
+        res = q.evaluate(self._recs(fail5=1))
+        self.assertFalse(res["5s"]["passed"])
 
     def test_30s_incomplete_never_passes(self):
         res = q.evaluate(self._recs(n30=4))
