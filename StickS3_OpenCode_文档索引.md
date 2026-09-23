@@ -46,3 +46,31 @@
 用户已集中通过当前已写明方案，Q02电池息屏60秒、心跳10秒，状态过期15秒。已列256KiB Opus载荷限额等其余建议获批；未填写的回执容量、尾帧/追加回执超时、具体手势阈值、协议字节布局、实际字体与语料仍须依据事实补齐，不假造用户批准值。GitHub发布仍需另行授权，产品测试尚未执行。下一步是工程参数补齐与故事DoR准备，不再重复询问已批准产品选择。ASR云服务准备（2026-09-20）：充值已完成；剩余待用户确认项为专用Key创建与保管、≤30秒非敏感测试音频准备、首次真实调用授权（可能计费）。
 
 无须重复确认：Windows＋WSL OpenCode TUI、BLE单设备、智谱云ASR、30秒按住录音、追加草稿不发送、完整状态信息、失败内存保留5分钟、USB升级和不开OTA。
+
+## 当前状态与下一步（2026-09-23 收工交接）
+
+### 本轮完成
+1. **采音时基修复（重大）**：根因 `I2S_SLOT_MODE_MONO` → WS 实际 32kHz → 2 倍拉伸；修复为 **STEREO 槽位 + 取左声道**。实测 `rate_probe` 32029/s → **16013/s**；真实语音经智谱 ASR 得到**正确中文**（两次验证）。详见 `evidence/M3/2026-09-23-采音时基诊断.md`。
+2. **M3 故事 4 纵切**：设备采音 → BLE → Opus → 解码 → ASR 全链验证通过；**仅剩"追加草稿"一跳**。
+3. **桥接插件已注册**到 WSL OpenCode（`~/.config/opencode/opencode.json[.jsonc]` 的 `plugin` 数组，已备份 `.bak-20260923`）——**需重启 OpenCode 生效**。
+4. 小智 KB 适用边界（`references/APPLICABILITY.md` + SKILL.md 收紧）；硬件文档附录 B 更新为"已解决"。
+
+### 下一步（重启 OpenCode 后执行）
+```powershell
+. "C:\Temp\ESP32-S3M5\tools\bridge_env.ps1"     # 读 bridge.json + 查 /v1/binding，装载 4 个环境变量
+powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.ps1"
+```
+对设备说 30 秒 → 预期 `[PASS] 已填入草稿（未提交，请手动发送）` → 在 OpenCode 输入框**手动发送** → **M3 用户价值闭环达成**。
+
+若装载器报"找不到 bridge.json"：插件未加载成功，检查 OpenCode 启动输出是否有插件报错。
+> 注意：桥接在 WSL 内监听 127.0.0.1，Windows 侧经 WSL localhost 转发访问；若不通，改用 WSL IP（需同步改 `bridge_env.ps1` 的 URL 策略）。
+
+### 交付前必做（诊断脚手架登记）
+- `firmware/sticks3/main/main.c`：启动 `zcr` 证据、`audio_capture_log_clocks()`、`audio_capture_probe_rate()`、心跳周期时钟打印
+- `firmware/sticks3/main/audio_session.c`：END 日志 `zcr`
+- `ble_gatt.c`：测试钩子 `0x7F`（用户已裁定保留，登记于 `contracts/M2` 附节）
+- 以上**修复验证完成后应移除或显式登记**，否则"交付固件=已验证固件"的对应关系需附条件说明
+
+### 未竟项
+- M3 验收：30 条语料冻结 + 时延 60 次（Q03）+ 准确率 30 条（Q04）
+- M4：状态屏三页 UI、托盘、凭据管理器（C11）落地
