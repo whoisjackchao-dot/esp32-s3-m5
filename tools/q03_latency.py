@@ -14,7 +14,7 @@ import sys
 THRESHOLD_S = 5.0
 EXPECTED_N = 20
 MIN_PASS = 19
-GROUPS = ("5s", "15s", "30s")
+GROUPS = ("5s", "10s", "30s")
 
 ANCHOR_EARLY = "BtnA 松开"
 ANCHOR_HARDSTOP = "END recID="

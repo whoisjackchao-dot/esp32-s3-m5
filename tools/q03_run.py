@@ -42,6 +42,15 @@ def append_record(path, record):
         fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
+def save_serial_log(group, index, lines):
+    """持久化串口锚点日志（含到达时刻），供审计与 Δ/Δ₂ 复核。"""
+    path = os.path.join(CAP_DIR, "serial_{}_{}.log".format(group, index))
+    with open(path, "w", encoding="utf-8") as fh:
+        for ts, text in lines:
+            fh.write("{:.3f}\t{}\n".format(ts, text))
+    return path
+
+
 def le16(d, o):
     return d[o] | (d[o + 1] << 8)
 
@@ -169,23 +178,38 @@ def save_capture(st, path):
     return path
 
 
+def classify_append_line(line):
+    """把 voice_append.exe 的一行输出分类为 (是否 BR-04 响应行, status)。
+    BR-04 行判定只用 ASCII 前缀 `[3]`：该行含中文（`[3] 桥接 HTTP …`），历史上
+    因子进程 stdout 以 cp1252 解码成乱码而永不命中，导致 46 次运行 latency 全空
+    （2026-09-23 实测缺陷）——故此处不得依赖中文。"""
+    br04 = line.startswith("[3]")
+    if '"applied"' in line:
+        status = "applied"
+    elif '"uncertain"' in line:
+        status = "uncertain"
+    elif '"processing"' in line:
+        status = "processing"
+    else:
+        status = None
+    return br04, status
+
+
 def run_append(wav_path):
     """运行 voice_append.exe，返回 (t1_ms, br04_status)。t1 = 出现 BR-04 响应行的时刻。"""
     exe = os.path.join(os.path.dirname(HERE), "host", "src", "voice_append.exe")
     proc = subprocess.Popen([exe, wav_path], stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1)
+                            stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+                            errors="replace", bufsize=1)
     t1, status = None, "no_response"
     for line in proc.stdout:
         sys.stdout.write(line)
         sys.stdout.flush()
-        if t1 is None and line.startswith("[3] 桥接 HTTP"):
+        br04, line_status = classify_append_line(line)
+        if t1 is None and br04:
             t1 = now_ms()
-        if '"status":"applied"' in line or '"applied"' in line:
-            status = "applied"
-        elif '"uncertain"' in line:
-            status = "uncertain"
-        elif '"processing"' in line:
-            status = "processing"
+        if line_status:
+            status = line_status
     proc.wait()
     return t1, status
 
@@ -215,12 +239,14 @@ def main():
     except Exception as exc:
         serial_anchor.close()
         print("[FAIL] BLE 采集: {!r}".format(exc))
+        save_serial_log(args.group, args.index, serial_anchor.lines)
         record = q.build_record(args.group, args.index, None, None, "ble_capture_fail")
         append_record(args.out, record)
         print("[FAIL] {} #{} latency=-（失败记录已写入，保留分母）".format(args.group, args.index))
         return 1
-    time.sleep(1.0)  # 等串口 END 行到达
+    time.sleep(1.0)
     serial_anchor.close()
+    save_serial_log(args.group, args.index, serial_anchor.lines)
 
     ok_summary = verify_frames(st)
     anchor = q.pick_anchor_ts(serial_anchor.lines, args.group, st["ble_begin_ms"])
