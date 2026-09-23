@@ -1,6 +1,7 @@
 # StickS3 OpenCode项目文档索引
 
-> 2026-09-15；当前为设计审阅与测试规格阶段；没有项目实现或已执行产品测试。  
+> **当前状态以文末 [当前状态与下一步](#当前状态与下一步2026-09-23-收工交接) 为准**；下列 2026-09-15 标注为**历史快照**（当时无实现、无测试）。
+> 2026-09-15（历史）；当时为设计审阅与测试规格阶段；没有项目实现或已执行产品测试。  
 > 方法论以用户最新要求为准：Agile＋Evolutionary Design＋Selective TDD。
 
 > 最新集中审阅（2026-09-15）：用户已批准其余已写明方案，仅将电池息屏改为1分钟（60秒）、心跳改为10秒。状态过期仍15秒，其他数值不变。测试未执行，未填写的工程参数仍需补齐。
@@ -52,17 +53,34 @@
 ### 本轮完成
 1. **采音时基修复（重大）**：根因 `I2S_SLOT_MODE_MONO` → WS 实际 32kHz → 2 倍拉伸；修复为 **STEREO 槽位 + 取左声道**。实测 `rate_probe` 32029/s → **16013/s**；真实语音经智谱 ASR 得到**正确中文**（两次验证）。详见 `evidence/M3/2026-09-23-采音时基诊断.md`。
 2. **M3 故事 4 纵切**：设备采音 → BLE → Opus → 解码 → ASR 全链验证通过；**仅剩"追加草稿"一跳**。
-3. **桥接插件已注册**到 WSL OpenCode 的 **`~/.config/opencode/tui.json`** 的 `plugin` 数组（已备份 `tui.json.bak-20260923`）——**需重启 OpenCode 生效**。
+3. **桥接插件已注册**到 WSL OpenCode 的 **`~/.config/opencode/tui.json`** 的 `plugin` 数组（已备份 `tui.json.bak-20260923`）——**需重启 OpenCode 生效**（**已于 2026-09-23 11:37 重启生效并核实，见下方"开工就绪核查"**）。
    - 更正记录：该插件是 **TUI 插件**（`TuiPluginModule = { id?, tui, server?:never }`，`@opencode-ai/plugin/tui`），注册处是 `tui.json` 而非 `opencode.json` 的 server `plugin` 数组；一度加错位置，已撤回（`opencode.json[.jsonc]` 已还原备份）。
    - 加载方式：OpenCode 用 `Bun.resolve(entry, ~/.config/opencode)` 解析后 `import()`；实测绝对路径与 `file://` 两种写法均可解析。
 4. 小智 KB 适用边界（`references/APPLICABILITY.md` + SKILL.md 收紧）；硬件文档附录 B 更新为"已解决"。
 
-### 下一步（重启 OpenCode 后执行）
+### 下一步（2026-09-23 11:39 已核实可执行，重启已生效）
 ```powershell
 . "C:\Temp\ESP32-S3M5\tools\bridge_env.ps1"     # 读 bridge.json + 查 /v1/binding，装载 4 个环境变量
 powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.ps1"
 ```
 对设备说 30 秒 → 预期 `[PASS] 已填入草稿（未提交，请手动发送）` → 在 OpenCode 输入框**手动发送** → **M3 用户价值闭环达成**。
+
+> **2026-09-23 已执行并 PASS**：见 `evidence/M3/2026-09-23-M3故事4纵切闭环.md`（桥接 `status:"applied"`，端口 45093＝重启后新实例）。剩余为"用户手动发送 + 目视确认"与 §7 登记的差异。
+
+**开工就绪核查（2026-09-23 11:39，本轮实测）**：
+- 插件已加载运行：`bridge.json`（11:37 写入）+ WSL `127.0.0.1:36997` 监听（opencode pid 17996）→ 重启生效，上一条"需重启"已过期。
+- `/v1/binding` HTTP 200：`currentRouteSessionID=ses_f33a84ae7ffewmdx4l3qM6PvpA`、`promptVisible=true`、`promptDisabled=false`、`dialogBlocking=false` → `canAppend=true`。
+- Windows 侧可达：`\\wsl.localhost\Ubuntu\...\bridge.json` 可读；`http://127.0.0.1:36997/v1/binding` 返回 **401**（服务存活、鉴权正常）。
+- 主机工具齐备：`host/src/ble_client.exe`、`host/src/voice_append.exe`；Python 3.12.10；串口 **COM5** 存在。
+- `plugin`：`bun test` **61/61 通过**（本轮实测）。
+- 主机回归（本轮实测）：`test_reasm` 566/0、`test_voice_txn` 93/0、`test_asr_adapter` 35/0、`test_asr_transport` 32/0（**需先起 mock-asr `bun serve.ts 18765 0.0.0.0`，否则 31 项因无服务而假失败**）、`test_asr_credential` 21/0 → **747 checks + 61 bun tests 全绿**。
+- 变量链一致：`bridge_env.ps1` 导出 4 变量 = `voice_append.cpp` 读取的 4 变量 = 插件 `/v1/binding`\|`/v1/draft/append` 契约。
+- **未核实**：设备当前固件是否为 STEREO 修复版（缺设备侧启动/日志证据）；A3 会话的 `captures/` 隐私目录不入库。
+
+**开工前待处理（本轮新发现，未处理）**：
+- `flash-artifacts/SHA256SUMS` 已陈旧：`bootloader.bin`、`sticks3.bin` 与实际哈希不一致（仅 `partition-table.bin` 一致）。当前 `sticks3.bin` SHA-256 = `8dbeced7dd16f8988ca11b2f9c1df0153738040b016e93d8feff143fc1477067`。交付前须重算登记。
+- 工作树未提交：`tools/bridge_env.ps1`（字段名修正为 `currentRouteSessionID`/`boundSessionID` + `canAppend` 推导，与插件 `BindingTarget` 实现一致）。建议提交后再开工，避免"已验证脚本 ≠ git 版本"。
+- `voice_slice.ps1` 仍以 `Read-Host` 手工输入 ASR Key，未走 C11 凭据管理器（故事 4 计划写的是"Key 由凭据管理器供给"）。不阻塞 M3 纵切，但属计划/实现的登记差异。
 
 若装载器报"找不到 bridge.json"：插件未加载成功，检查 OpenCode 启动输出是否有插件报错。
 > 注意：桥接在 WSL 内监听 127.0.0.1，Windows 侧经 WSL localhost 转发访问；若不通，改用 WSL IP（需同步改 `bridge_env.ps1` 的 URL 策略）。
@@ -73,6 +91,24 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 - `ble_gatt.c`：测试钩子 `0x7F`（用户已裁定保留，登记于 `contracts/M2` 附节）
 - 以上**修复验证完成后应移除或显式登记**，否则"交付固件=已验证固件"的对应关系需附条件说明
 
+### 纵切末跳登记（2026-09-23，本次）
+- **M3 故事 4 技术链路端到端 PASS**：`voice_slice.ps1` 全流程 → 桥接 `status:"applied"`（草稿填入、未提交）。证据：`evidence/M3/2026-09-23-M3故事4纵切闭环.md`。
+  - 独立校验：设备 END.summary `0xa1ffa3c3` == 主机 FNV-1a；容器分解 12+500×6+77509=80521；WAV 44+1440000×2=2880044；时长 500×60ms=30.00s。
+  - 桥接实例为**重启后新实例**（端口 36997 → 45093）。
+- **闭环仍待用户确认**：是否已在输入框目视确认并手动发送（交付节点 M3 的闭环判据）。
+- **闭环确认路径已登记（未执行）**：子用例 **E2E-01p**（E2E-01 的人工确认子步，H 类）已登记入测试矩阵，配套脚本 `tools/m3_manual_send_verify.ps1`；**当前 NOT_RUN**，需用户目视确认并手动发送后由该脚本归档 `evidence/M3/<时间戳>-M3人工闭环确认.md`。**登记不等于通过**。
+- 未按计划/未覆盖：`voice_slice.ps1` 仍 `Read-Host` 手输 Key（未走 C11）；本次无托盘、非物理松键、设备状态屏 UNKNOWN（详见该证据 §7）。
+
 ### 未竟项
+- **M3 故事 4**：技术链路已 PASS 并归档；仅剩"用户手动发送"这一人的动作与最终闭环判定
 - M3 验收：30 条语料冻结 + 时延 60 次（Q03）+ 准确率 30 条（Q04）
-- M4：状态屏三页 UI、托盘、凭据管理器（C11）落地
+- **登记差异**：`voice_slice.ps1` 的 ASR Key 接入 C11 凭据管理器（故事 4 计划写的是"凭据管理器供给"）
+- M4：状态屏三页 UI、托盘、USB/电池策略（**C11 凭据管理器核心已落地**：`asr_cred_tool`，TDD 21/21，见 `evidence/M3/2026-09-22-M3故事2-3完成记录.md`；托盘设置流归 M4）
+- 交付前：移除或显式登记诊断脚手架（见上节"交付前必做"）；重算 `flash-artifacts/SHA256SUMS`
+
+### 待用户决定
+- **M3 用户价值闭环确认**：`E2E-01p` 已登记（2026-09-23）但**尚未运行**。请运行 `tools/m3_manual_send_verify.ps1` 并按提示目视确认 + 手动发送，回报结论；PASS 时由该脚本归档证据后再勾掉本条。本轮**不勾**（未运行 ≠ 闭环成立）。
+- **`flash-artifacts/SHA256SUMS` 重算**：**仍待授权**。本轮仅按授权提交 `tools/bridge_env.ps1` 等未提交项；SHA256SUMS 未重算、未改动（该目录在 `.gitignore` 中）。
+- M2 出口审查（工程判据已全绿，仅剩"用户看过演示与已知风险"一项，见 `evidence/M2/2026-09-22-M2演示执行记录.md` §9）
+
+> **本轮提交边界（2026-09-23）**：仅本地 commit（`tools/bridge_env.ps1` 字段对齐、`E2E-01p` 用例与脚本、M3 纵切证据与本文档更新）；**不含 push / GitHub 发布**（推送不在本轮授权内）。设备 MAC 已按项目"不入库 MAC"惯例掩码后入库。
