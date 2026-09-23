@@ -131,6 +131,17 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 - **依赖与解码步核查（本轮实测）**：编排所用 Windows Python 依赖齐备（`av 18.1.0`、`pyserial 3.5`、`bleak` 可导入）；用既有捕获 `captures/slice/rec_1.s3pcap` 跑编排的解码命令 → `500 frames → 1440000 samples (48kHz) = 30.00s`，与既有证据一致。
 - **未竟**：Q03 **真实试点**（需用户按键 + 1 次云调用）未跑；通过后再跑 60 次正式测量（`q03_campaign.ps1`）。
 
+**2026-09-23 17:3x 会话登记（Sisyphus）——首次 Q03 战役结果核查 + 重跑准备**
+
+- **战役确实跑了**：`captures/q03/records.jsonl` 共 46 条（5s×21、15s×20、30s×5）→ **全部不可用于验收**：`latency_s` 全空、`ok` 全 false。
+- **采集链路零缺陷**：45 段音频（**44 段判为真实语音**，RMS −31~−37 dBFS）、46/46 FNV 摘要 MATCH、br04 applied 42/46。→ "采样成功"属实，但"时延测得"不成立。
+- **致命缺陷（已修，`19c16c3`）**：`voice_append.exe` 的 `[3] 桥接 HTTP …` 行含中文，子进程 stdout 被 Python 以 **cp1252** 解码成乱码 → `startswith("[3] 桥接 HTTP")` 永不命中 → `t1=None`。修复：子进程 `encoding="utf-8"` + t1 判定改用 ASCII 前缀 `[3]` + `classify_append_line()` 回归测试（`tools/test_q03_run.py`，41→47 用例）。
+- **另一发现**：实际录音时长与组名不符（"15s"组实际 **9.78~13.38s**；"30s"组 5 次中 3 次为 0.24/0.42/5.22s、**无一达 30s**）→ 用户裁定 **"严格：录音须真达到对应时长"**；分组改 **5/10/30**。
+- **中断原因**：campaign 停在 30s#3（≈17:28），与 `bridge.json` 17:28 更新、**tuiEpoch 旋转**同时发生 → OpenCode 重启/退出致旧 URL 失效（已加"每次运行前重载桥接 + 装载失败即停并提示续跑"）。
+- **重跑前置就绪**：`tools/q03_campaign.ps1`（Key 只输一次、逐次重载桥接、超窗/失败自动重试 ≤3 次、末尾自动出报告）；时长闸门 + 串口证据落盘已实现。
+- **待用户确认**：各组"时长合格窗"（契约 §9 拟值：5s[5.0,7.0]、10s[10.0,12.0]、30s=30.00）。
+- **未竟**：Q03 正式测量仍未开始（本次 46 次记录作废，须重跑）。
+
 若装载器报"找不到 bridge.json"：插件未加载成功，检查 OpenCode 启动输出是否有插件报错。
 > 注意：桥接在 WSL 内监听 127.0.0.1，Windows 侧经 WSL localhost 转发访问；若不通，改用 WSL IP（需同步改 `bridge_env.ps1` 的 URL 策略）。
 

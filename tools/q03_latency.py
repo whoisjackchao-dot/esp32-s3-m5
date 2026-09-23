@@ -16,6 +16,33 @@ EXPECTED_N = 20
 MIN_PASS = 19
 GROUPS = ("5s", "10s", "30s")
 
+SAMPLE_RATE = 16000.0
+# 录音时长合格窗（秒）：用户 2026-09-23 裁定"必须真达到对应时长（严格）"。
+# 窗值见契约 §9，标注为**待确认拟值**，未经批准不得当已批准使用。
+DURATION_WINDOWS_S = {
+    "5s": (5.0, 7.0),
+    "10s": (10.0, 12.0),
+    "30s": (29.9, 30.0),
+}
+
+
+def duration_ok(group, duration_s):
+    win = DURATION_WINDOWS_S.get(group)
+    if win is None or duration_s is None:
+        return False
+    return win[0] <= duration_s <= win[1]
+
+
+def dedupe_latest(records):
+    """同 (group,index) 保留最后一条（重做/重试语义：后到覆盖先到）；无 index 者各算一条。"""
+    out = {}
+    for pos, r in enumerate(records):
+        if r.get("index") is None:
+            out[("__noidx__", pos)] = r
+        else:
+            out[(r.get("group"), r.get("index"))] = r
+    return list(out.values())
+
 ANCHOR_EARLY = "BtnA 松开"
 ANCHOR_HARDSTOP = "END recID="
 
@@ -40,9 +67,12 @@ def serial_latency_delta_ms(lines, t_ble_end_ms):
 
 def build_record(group, index, t0_ms, t1_ms, br04_status, delta_ms=None,
                  end_frames=None, end_samples=None, summary_match=None):
-    """latency_s 仅在 t0/t1 齐备且 BR-04 applied 时给出；否则 None（失败仍进分母）。"""
+    """latency_s 仅在 t0/t1 齐备、BR-04 applied、摘要未失配、且录音时长合格时给出；
+    否则 None（仍进分母）。"""
+    duration_s = (end_samples / SAMPLE_RATE) if end_samples else None
+    dur_ok = duration_ok(group, duration_s)
     ok = (t0_ms is not None and t1_ms is not None and br04_status == "applied"
-          and summary_match is not False)
+          and summary_match is not False and dur_ok)
     latency_s = ((t1_ms - t0_ms) / 1000.0) if ok else None
     return {
         "group": group, "index": index,
@@ -51,6 +81,8 @@ def build_record(group, index, t0_ms, t1_ms, br04_status, delta_ms=None,
         "br04_status": br04_status,
         "end_total_frames": end_frames,
         "end_samples": end_samples,
+        "duration_s": round(duration_s, 3) if duration_s is not None else None,
+        "duration_ok": dur_ok,
         "summary_match": summary_match,
         "ok": ok,
     }
@@ -92,7 +124,8 @@ def evaluate_group(latencies, threshold_s=THRESHOLD_S, expected_n=EXPECTED_N,
 
 
 def evaluate(records, groups=GROUPS):
-    """records: [{"group":str,"latency_s":float|None,"delta_ms":number?}]"""
+    """records: [{"group":str,"index":int?,"latency_s":float|None,"delta_ms":number?}]"""
+    records = dedupe_latest(records)
     by_group = {g: [] for g in groups}
     deltas = {g: [] for g in groups}
     for r in records:
@@ -105,29 +138,38 @@ def evaluate(records, groups=GROUPS):
     results = {}
     for g in groups:
         results[g] = evaluate_group(by_group[g], deltas_s=deltas[g])
+        results[g]["invalid_duration"] = sum(
+            1 for r in records
+            if r.get("group") == g and r.get("duration_ok") is False)
     results["_all_passed"] = all(results[g]["passed"] for g in groups)
-    results["_needs_review"] = any(results[g]["grey_zone"] > 0 for g in groups)
+    results["_needs_review"] = (any(results[g]["grey_zone"] > 0 for g in groups)
+                               or any(results[g]["invalid_duration"] > 0 for g in groups))
     return results
 
 
 def format_report(results):
     lines = ["Q03 时延验收报告（阈值 {}s，每组 {}/{}）".format(
         THRESHOLD_S, MIN_PASS, EXPECTED_N), ""]
-    lines.append("| 组 | 次数 | <=5s 成功 | 达标(>=19/20) | P50(s) | P95(s) | 灰区 | 失败序号 |")
-    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
+    lines.append("| 组 | 次数 | <=5s 成功 | 达标(>=19/20) | P50(s) | P95(s) | 灰区 | 无效时长 | 失败序号 |")
+    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for g in GROUPS:
         r = results[g]
         p50 = "{:.2f}".format(r["p50_s"]) if r["p50_s"] is not None else "-"
         p95 = "{:.2f}".format(r["p95_s"]) if r["p95_s"] is not None else "-"
-        lines.append("| {} | {} | {} | {} | {} | {} | {} | {} |".format(
+        lines.append("| {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
             g, r["n"], r["successes_le_threshold"],
             "PASS" if r["passed"] else "FAIL", p50, p95, r["grey_zone"],
+            r.get("invalid_duration", 0),
             ",".join(str(i) for i in r["failed_indices"]) or "-"))
     lines.append("")
     lines.append("三组总体：{}".format("PASS" if results["_all_passed"] else "FAIL"))
+    grey = sum(results[g]["grey_zone"] for g in GROUPS)
+    invalid = sum(results[g]["invalid_duration"] for g in GROUPS)
     if results.get("_needs_review"):
-        grey = sum(results[g]["grey_zone"] for g in GROUPS)
-        lines.append("⚠ 灰区 {} 项：串口延迟不确定度可能致误判，需人工复核（不自动放行）".format(grey))
+        if grey:
+            lines.append("⚠ 灰区 {} 项：串口延迟不确定度可能致误判，需人工复核（不自动放行）".format(grey))
+        if invalid:
+            lines.append("⚠ 无效时长 {} 项：录音未落在该组合格窗内，须重做（见契约 §9）".format(invalid))
     return "\n".join(lines)
 
 

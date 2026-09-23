@@ -278,10 +278,14 @@ def main():
 
     append_record(args.out, record)
     lat = record["latency_s"]
-    print("[{}] {} #{} latency={} delta={}ms frames={} summary_match={}".format(
+    print("[{}] {} #{} latency={} delta={}ms frames={} duration={}s duration_ok={} summary_match={}".format(
         "OK" if record["ok"] else "FAIL", args.group, args.index,
         "-" if lat is None else "{:.3f}s".format(lat), delta,
-        record["end_total_frames"], record["summary_match"]))
+        record["end_total_frames"], record["duration_s"], record["duration_ok"],
+        record["summary_match"]))
+    if record["duration_s"] is not None and not record["duration_ok"]:
+        print("[REDO] 录音 {}s 不在 {} 合格窗 {}s 内——本次无效，请重做".format(
+            record["duration_s"], args.group, q.DURATION_WINDOWS_S.get(args.group)))
     return 0 if record["ok"] else 1
 
 

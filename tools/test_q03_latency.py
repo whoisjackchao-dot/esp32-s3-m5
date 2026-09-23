@@ -140,10 +140,12 @@ class TestAnchorAndRecord(unittest.TestCase):
 
     def test_build_record_ok(self):
         r = q.build_record("5s", 1, t0_ms=5000, t1_ms=8000, br04_status="applied",
-                           delta_ms=100, end_frames=66, end_samples=63360,
+                           delta_ms=100, end_frames=92, end_samples=88000,
                            summary_match=True)
         self.assertTrue(r["ok"])
         self.assertEqual(r["latency_s"], 3.0)
+        self.assertEqual(r["duration_s"], 5.5)
+        self.assertTrue(r["duration_ok"])
 
     def test_build_record_failure_keeps_denominator(self):
         r = q.build_record("5s", 2, t0_ms=5000, t1_ms=None, br04_status="timeout")
@@ -200,6 +202,45 @@ class TestLoadRecords(unittest.TestCase):
                 recs.append({"group": g, "latency_s": 2.0, "delta_ms": 50})
         path = self._write("\n".join(json.dumps(r) for r in recs) + "\n")
         self.assertEqual(q.main(["q03_latency.py", path]), 0)
+
+
+class TestDurationWindow(unittest.TestCase):
+    def test_in_window(self):
+        self.assertTrue(q.duration_ok("5s", 5.0))
+        self.assertTrue(q.duration_ok("5s", 6.99))
+        self.assertTrue(q.duration_ok("10s", 11.0))
+        self.assertTrue(q.duration_ok("30s", 30.0))
+
+    def test_out_of_window(self):
+        self.assertFalse(q.duration_ok("5s", 4.99))
+        self.assertFalse(q.duration_ok("5s", 7.01))
+        self.assertFalse(q.duration_ok("10s", 9.99))
+        self.assertFalse(q.duration_ok("30s", 29.0))
+        self.assertFalse(q.duration_ok("5s", None))
+        self.assertFalse(q.duration_ok("99s", 5.0))
+
+    def test_build_record_rejects_wrong_duration(self):
+        r = q.build_record("5s", 2, 5000, 8000, "applied", end_samples=63360)
+        self.assertFalse(r["duration_ok"])
+        self.assertIsNone(r["latency_s"])
+        self.assertFalse(r["ok"])
+
+
+class TestDedupeLatest(unittest.TestCase):
+    def test_later_record_wins(self):
+        recs = [{"group": "5s", "index": 1, "ok": False},
+                {"group": "5s", "index": 1, "ok": True}]
+        out = q.dedupe_latest(recs)
+        self.assertEqual(len(out), 1)
+        self.assertTrue(out[0]["ok"])
+
+    def test_distinct_indices_kept(self):
+        recs = [{"group": "5s", "index": 1}, {"group": "5s", "index": 2}]
+        self.assertEqual(len(q.dedupe_latest(recs)), 2)
+
+    def test_records_without_index_each_count(self):
+        recs = [{"group": "5s"}, {"group": "5s"}, {"group": "5s"}]
+        self.assertEqual(len(q.dedupe_latest(recs)), 3)
 
 
 if __name__ == "__main__":
