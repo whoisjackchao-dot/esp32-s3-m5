@@ -86,6 +86,9 @@ static void run_session(void) {
 
     uint32_t summary = 0x811c9dc5u;
     uint32_t total_samples = 0;
+    uint32_t zc_count = 0;
+    int16_t zc_prev = 0;
+    int zc_have_prev = 0;
     uint32_t total_opus_bytes = 0;
     uint32_t notify_fail = 0;
     uint16_t max_frag = (uint16_t)(mtu - S3P_AUDIO_HDR_LEN);
@@ -118,6 +121,11 @@ static void run_session(void) {
             return;
         }
         summary = fnv_update(summary, s_opus, (size_t)n);
+        for (size_t i = 0; i < got; i += 1) {
+            if (zc_have_prev && ((zc_prev < 0) != (s_pcm[i] < 0))) zc_count += 1;
+            zc_prev = s_pcm[i];
+            zc_have_prev = 1;
+        }
         total_samples += (uint32_t)got;
         total_opus_bytes += (uint32_t)n;
 
@@ -150,11 +158,13 @@ static void run_session(void) {
     }
     ESP_LOGI(TAG,
              "END recID=%u frames=%lu samples=%lu opus=%luB (%luB/帧) "
-             "summary=0x%08lx 耗时=%lldms",
+             "summary=0x%08lx zcr=%lu/s 耗时=%lldms",
              rec_id, (unsigned long)SESSION_FRAMES, (unsigned long)total_samples,
              (unsigned long)total_opus_bytes,
              (unsigned long)(total_opus_bytes / SESSION_FRAMES),
-             (unsigned long)summary, (long long)(now_ms() - t0));
+             (unsigned long)summary,
+             (unsigned long)(total_samples > 1 ? (zc_count * 16000u) / total_samples : 0),
+             (long long)(now_ms() - t0));
 }
 
 static void session_task(void *arg) {

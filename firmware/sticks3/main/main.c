@@ -52,7 +52,10 @@ static int proto_selftest(void) {
     return 0;
 }
 
-/* M01 采音通路证据：3 秒窗口的 min/max/avg 统计（全零或卡死即为通路异常） */
+/* M01 采音通路证据：3 秒窗口的 min/max/avg + 过零率（ZCR）。
+ * ZCR 用途（2026-09-23 时基排查）：正常语音 ZCR 约 1500~2500/s；
+ * 若原始 PCM ZCR 远低于此（如 ~800），则设备采音时基偏低（疑似 2 倍），
+ * 与主机侧解码后 ZCR 对比可二分定位 codec/I2S 侧 vs Opus 链侧。 */
 static void audio_path_evidence(void) {
     static int16_t samples[960]; /* 60ms @16kHz 单声道 */
     for (int sec = 1; sec <= 3; sec += 1) {
@@ -60,6 +63,9 @@ static void audio_path_evidence(void) {
         int16_t mn = INT16_MAX;
         int16_t mx = INT16_MIN;
         uint32_t total = 0;
+        uint32_t zc = 0;
+        int16_t prev = 0;
+        int have_prev = 0;
         for (int frame = 0; frame < 16; frame += 1) {
             size_t got = 0;
             if (audio_capture_read(samples, 960, &got) != ESP_OK) {
@@ -70,12 +76,17 @@ static void audio_path_evidence(void) {
                 sum += samples[i];
                 if (samples[i] < mn) mn = samples[i];
                 if (samples[i] > mx) mx = samples[i];
+                if (have_prev && ((prev < 0) != (samples[i] < 0))) zc += 1;
+                prev = samples[i];
+                have_prev = 1;
             }
             total += (uint32_t)got;
         }
         const int avg = total > 0 ? (int)(sum / (int32_t)total) : 0;
-        ESP_LOGI(TAG, "audio %ds: samples=%lu min=%d max=%d avg=%d",
-                 sec, (unsigned long)total, (int)mn, (int)mx, avg);
+        const uint32_t zcr = total > 1 ? (zc * 16000u) / total : 0;
+        ESP_LOGI(TAG, "audio %ds: samples=%lu min=%d max=%d avg=%d zcr=%lu/s",
+                 sec, (unsigned long)total, (int)mn, (int)mx, avg,
+                 (unsigned long)zcr);
     }
 }
 
@@ -98,6 +109,7 @@ void app_main(void) {
 
     if (audio_capture_init() == ESP_OK) {
         audio_path_evidence();
+
     } else {
         ESP_LOGE(TAG, "audio capture init FAILED");
     }
