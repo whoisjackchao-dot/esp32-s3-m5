@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)][ValidateSet("5s", "15s", "30s")][string]$Group,
     [int]$Index = 1,
     [string]$Port = "COM5",
