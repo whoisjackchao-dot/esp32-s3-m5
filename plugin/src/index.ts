@@ -15,6 +15,7 @@ import type {
 } from "./core/types";
 import { RefStore, currentSessionID, registerSlotPlugin } from "./plugin/capture";
 import { buildCommitFn } from "./plugin/safeAppend";
+import { buildSessionPromptSlot } from "./plugin/slotPrompt";
 import { startBridge } from "./bridge/server";
 
 const PLUGIN_VERSION = "0.1.0";
@@ -48,15 +49,14 @@ const plugin: TuiPluginModule = {
         registerSlotPlugin(api, {
             id: "sticks3-voice-draft-slots",
             slots: {
-                // session_prompt 为 replace 模式（B01 实证）：本插件渲染 api.ui.Prompt
-                // 并经其 ref 回调捕获与 TUI 输入框实时绑定的引用。
-                session_prompt: () =>
-                    api.ui.Prompt({
-                        ref: (ref) => {
-                            const sessionID = currentSessionID(api.route.current);
-                            if (sessionID) refs.capture(sessionID, ref);
-                        },
-                    }),
+                // session_prompt 为 replace 模式（B01 实证）：必须转发宿主 props
+                // （session_id/on_submit/visible/disabled/ref），否则会话内输入框会
+                // 退化成首页"新建会话"输入框——每次回车新建会话（2026-09-23 根因，
+                // opencode 1.18.32 二进制级证据；方案 B 修复）。
+                session_prompt: buildSessionPromptSlot(
+                    (props) => api.ui.Prompt(props),
+                    (sessionID, ref) => refs.capture(sessionID, ref),
+                ),
             },
         });
 

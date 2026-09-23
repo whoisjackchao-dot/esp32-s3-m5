@@ -81,10 +81,12 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 - `flash-artifacts/SHA256SUMS` 已陈旧：`bootloader.bin`、`sticks3.bin` 与实际哈希不一致（仅 `partition-table.bin` 一致）。当前 `sticks3.bin` SHA-256 = `8dbeced7dd16f8988ca11b2f9c1df0153738040b016e93d8feff143fc1477067`。交付前须重算登记。
 - `voice_slice.ps1` 仍以 `Read-Host` 手工输入 ASR Key，未走 C11 凭据管理器（故事 4 计划写的是"Key 由凭据管理器供给"）。不阻塞 M3 纵切，但属计划/实现的登记差异。
 
-**2026-09-23 13:46 会话登记（Sisyphus）**：
-- **发现**：13:39:12 起 ESP32 桥接插件被禁用（备份 `tui.json.bak-before-esp32-disable-20260923-133912`），当前 opencode 实例未加载插件 → `bridge.json`（13:26 残留）指向 `127.0.0.1:35961` 无监听、curl 失败；Windows 侧 45093 亦不可达。
-- **处置**：已恢复 `tui.json`（追加 `/mnt/c/Temp/ESP32-S3M5/plugin/src/index.ts`，保留 `oh-my-openagent@4.19.4`）；禁用态备份 `tui.json.bak-esp32-disabled-20260923-134645`。plugin `bun test` 61/61 通过（本轮实测）。
-- **下一步（已固化为指引文档）**：`tools/M3闭环执行指引-20260923.md` —— 重启 opencode → 验证插件加载 → `bridge_env.ps1` 点源 → `voice_slice.ps1` 采音 30s → `m3_manual_send_verify.ps1 -Existing` 目视+手动发送 → PASS 后归档证据并勾掉下方「待用户决定」第一条。
+**2026-09-23 14:10 会话登记（Sisyphus）——插件根因与修复（阻塞 M3 闭环）**：
+- 背景：13:39:12 起 ESP32 桥接插件曾被禁用（备份 `tui.json.bak-before-esp32-disable-20260923-133912`）；13:46 本会话曾恢复 `tui.json` 注册（禁用态备份 `tui.json.bak-esp32-disabled-20260923-134645`），当时未知下述根因。
+- **根因（二进制级）**：插件首版实现**未转发宿主 `session_prompt` props**（`session_id`/`on_submit`/`visible`/`disabled`/`ref`），使会话内输入框退化为"首页新建会话"框——每次回车新建会话、变空会话、上下文丢失（11:18 起重启风暴）。证据：`evidence/M3/2026-09-23-插件会话重置根因与修复.md`。
+- **修复（方案 B）**：新增 `plugin/src/plugin/slotPrompt.ts`（`buildSessionPromptSlot` 转发全部宿主 props + ref 捕获）、`plugin/src/index.ts` 接入、`plugin/test/slotPrompt.test.ts` 8 用例。验证：`bun test` **69/69**、`tsc --noEmit` 通过、隔离 HOME 实例 `/v1/health alive:true` 且 0 ERROR/WARN（本轮实测）。
+- **跨文档修订**：`plugin/spike/FINDINGS.md` §1.6/§3 更正（首版"仅传 ref"配方被证伪）+ §5 新增。
+- **⚠️ 重启前置（未完成）**：重启 opencode 后**先验证**"连续发两条消息停留同一会话、不跳空会话"，验证通过后再执行 `tools/M3闭环执行指引-20260923.md` 的 M3 闭环步骤。
 
 若装载器报"找不到 bridge.json"：插件未加载成功，检查 OpenCode 启动输出是否有插件报错。
 > 注意：桥接在 WSL 内监听 127.0.0.1，Windows 侧经 WSL localhost 转发访问；若不通，改用 WSL IP（需同步改 `bridge_env.ps1` 的 URL 策略）。
@@ -111,7 +113,7 @@ powershell -ExecutionPolicy Bypass -File "C:\Temp\ESP32-S3M5\tools\voice_slice.p
 - 交付前：移除或显式登记诊断脚手架（见上节"交付前必做"）；重算 `flash-artifacts/SHA256SUMS`
 
 ### 待用户决定
-- **M3 用户价值闭环确认**：`E2E-01p` 已登记（2026-09-23）但**尚未运行**。请运行 `tools/m3_manual_send_verify.ps1` 并按提示目视确认 + 手动发送，回报结论；PASS 时由该脚本归档证据后再勾掉本条。本轮**不勾**（未运行 ≠ 闭环成立）。
+- **M3 用户价值闭环确认**：`E2E-01p` 已登记（2026-09-23）但**尚未运行**。**前置**：重启 opencode 后先验证会话不再跳转（插件修复生效，见上方 14:10 登记）；随后运行 `tools/m3_manual_send_verify.ps1` 并按提示目视确认 + 手动发送，回报结论；PASS 时由该脚本归档证据后再勾掉本条。本轮**不勾**（未运行 ≠ 闭环成立）。
 - **`flash-artifacts/SHA256SUMS` 重算**：**仍待授权**。本轮仅按授权提交 `tools/bridge_env.ps1` 等未提交项；SHA256SUMS 未重算、未改动（该目录在 `.gitignore` 中）。
 - M2 出口审查（工程判据已全绿，仅剩"用户看过演示与已知风险"一项，见 `evidence/M2/2026-09-22-M2演示执行记录.md` §9）
 
