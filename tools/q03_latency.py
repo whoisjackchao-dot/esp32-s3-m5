@@ -15,6 +15,14 @@ THRESHOLD_S = 5.0
 EXPECTED_N = 20
 MIN_PASS = 19
 GROUPS = ("5s", "10s", "30s")
+# 每组目标次数：30s 组 20 → 5（用户 2026-09-23 修订，契约 §8/§9）
+PER_GROUP_N = {"5s": 20, "10s": 20, "30s": 5}
+
+
+def min_pass_for(target_n):
+    """由已批准 19/20（95%）推导的通过门槛：ceil(0.95*n)。n=20 → 19（与 Q03 一致）；
+    n=5 → 5。**推导值，待用户确认**（契约 §9）。"""
+    return max(1, int(math.ceil(0.95 * target_n)))
 
 SAMPLE_RATE = 16000.0
 # 录音时长合格窗（秒）：用户 2026-09-23 裁定"必须真达到对应时长（严格）"。
@@ -97,13 +105,15 @@ def nearest_rank_percentile(values, p):
     return vals[rank - 1]
 
 
-def evaluate_group(latencies, threshold_s=THRESHOLD_S, expected_n=EXPECTED_N,
-                   min_pass=MIN_PASS, deltas_s=None):
+def evaluate_group(latencies, threshold_s=THRESHOLD_S, expected_n=None,
+                   min_pass=None, deltas_s=None):
     """按 Q03 判据评估一组。latencies: 逐次点估计秒数或 None（失败）。"""
     n = len(latencies)
-    complete = n >= expected_n
+    target = expected_n if expected_n is not None else EXPECTED_N
+    need = min_pass if min_pass is not None else min_pass_for(target)
+    complete = n >= target
     successes = sum(1 for v in latencies if v is not None and v <= threshold_s)
-    passed = complete and successes >= min_pass
+    passed = complete and successes >= need
     lats = [v for v in latencies if v is not None]
     grey = 0
     if deltas_s is not None:
@@ -111,8 +121,9 @@ def evaluate_group(latencies, threshold_s=THRESHOLD_S, expected_n=EXPECTED_N,
             if v is not None and v <= threshold_s and v + (d or 0.0) > threshold_s:
                 grey += 1
     return {
-        "n": n, "complete": complete, "successes_le_threshold": successes,
-        "threshold_s": threshold_s, "min_pass": min_pass,
+        "n": n, "target_n": target, "complete": complete,
+        "successes_le_threshold": successes,
+        "threshold_s": threshold_s, "min_pass": need,
         "rate": (successes / n) if n else 0.0,
         "p50_s": nearest_rank_percentile(lats, 50),
         "p95_s": nearest_rank_percentile(lats, 95),
@@ -137,7 +148,9 @@ def evaluate(records, groups=GROUPS):
         deltas[g].append((r.get("delta_ms") or 0) / 1000.0)
     results = {}
     for g in groups:
-        results[g] = evaluate_group(by_group[g], deltas_s=deltas[g])
+        results[g] = evaluate_group(by_group[g],
+                                    expected_n=PER_GROUP_N.get(g, EXPECTED_N),
+                                    deltas_s=deltas[g])
         results[g]["invalid_duration"] = sum(
             1 for r in records
             if r.get("group") == g and r.get("duration_ok") is False)
@@ -148,16 +161,16 @@ def evaluate(records, groups=GROUPS):
 
 
 def format_report(results):
-    lines = ["Q03 时延验收报告（阈值 {}s，每组 {}/{}）".format(
-        THRESHOLD_S, MIN_PASS, EXPECTED_N), ""]
-    lines.append("| 组 | 次数 | <=5s 成功 | 达标(>=19/20) | P50(s) | P95(s) | 灰区 | 无效时长 | 失败序号 |")
-    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- |")
+    lines = ["Q03 时延验收报告（阈值 {}s；每组达标 = 次数达目标 且 <=阈值次数 >= ceil(0.95*目标)）".format(
+        THRESHOLD_S), ""]
+    lines.append("| 组 | 实收/目标 | 需达标次数 | <=5s 成功 | 达标 | P50(s) | P95(s) | 灰区 | 无效时长 | 失败序号 |")
+    lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for g in GROUPS:
         r = results[g]
         p50 = "{:.2f}".format(r["p50_s"]) if r["p50_s"] is not None else "-"
         p95 = "{:.2f}".format(r["p95_s"]) if r["p95_s"] is not None else "-"
-        lines.append("| {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
-            g, r["n"], r["successes_le_threshold"],
+        lines.append("| {} | {}/{} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
+            g, r["n"], r["target_n"], r["min_pass"], r["successes_le_threshold"],
             "PASS" if r["passed"] else "FAIL", p50, p95, r["grey_zone"],
             r.get("invalid_duration", 0),
             ",".join(str(i) for i in r["failed_indices"]) or "-"))

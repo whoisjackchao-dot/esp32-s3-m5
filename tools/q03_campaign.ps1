@@ -1,12 +1,12 @@
 ﻿param(
     [string]$Port = "COM5",
     [string]$Out = "C:\Temp\ESP32-S3M5\captures\q03\records.jsonl",
-    [int]$PerGroup = 20,
     [int]$MaxTry = 3,
-    [string[]]$Groups = @("5s", "10s", "30s")
+    [hashtable]$Counts = @{ "5s" = 20; "10s" = 20; "30s" = 5 }
 )
 $ErrorActionPreference = "Stop"
 $py = "C:\Users\shiwenc\AppData\Local\Programs\Python\Python312\python.exe"
+$order = @("5s", "10s", "30s")
 
 $sec = Read-Host "智谱 API Key（隐藏输入，本战役复用）" -AsSecureString
 $env:STICKS3_ASR_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR(
@@ -16,8 +16,9 @@ $done = 0
 $redone = 0
 $bridgeOk = $true
 try {
-    foreach ($g in $Groups) {
-        for ($i = 1; $i -le $PerGroup; $i++) {
+    foreach ($g in $order) {
+        $n = [int]$Counts[$g]
+        for ($i = 1; $i -le $n; $i++) {
             for ($try = 1; $try -le $MaxTry; $try++) {
                 try {
                     . "$PSScriptRoot\bridge_env.ps1" | Out-Null
@@ -30,7 +31,7 @@ try {
                 if ($try -gt 1) {
                     Write-Host "[RETRY] 组 $g 第 $i 次 —— 第 $try 次尝试" -ForegroundColor Yellow
                 }
-                Write-Host "=== 组 $g 第 $i/$PerGroup 次：出现提示后按住 BtnA 讲话（目标约 $g，须达标）再松开 ===" -ForegroundColor Cyan
+                Write-Host "=== 组 $g 第 $i/$n 次：出现提示后按住 BtnA 讲话（目标约 $g，须达标）再松开 ===" -ForegroundColor Cyan
                 & $py "$PSScriptRoot\q03_run.py" --group $g --index $i --port $Port --out $Out
                 if ($LASTEXITCODE -eq 0) { break }
                 $redone += 1
