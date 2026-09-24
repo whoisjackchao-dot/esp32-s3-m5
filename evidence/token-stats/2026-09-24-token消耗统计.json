@@ -1,0 +1,336 @@
+{
+ "meta": {
+  "name": "ESP32-S3M5",
+  "since": "2026-09-11",
+  "until": "2026-09-24 10:14",
+  "days": 13,
+  "n_project": 87,
+  "n_main": 32,
+  "n_excl": 106,
+  "n_review": 0
+ },
+ "aggregate": {
+  "total": {
+   "input": 19752438,
+   "output": 1184175,
+   "reasoning": 2096582,
+   "cache_read": 765309833,
+   "cache_write": 0
+  },
+  "total_all_tokens": 788343028,
+  "by_model": {
+   "deepseek/deepseek-flash": {
+    "tokens": {
+     "input": 6868169,
+     "output": 480358,
+     "reasoning": 1008191,
+     "cache_read": 346264960,
+     "cache_write": 0
+    },
+    "cost": 2.1014,
+    "cost_db": 2.1014,
+    "cost_est": 0.0,
+    "status": "billed",
+    "sessions": 20
+   },
+   "zhipu-coding-plan/glm-5.3-flash": {
+    "tokens": {
+     "input": 4132004,
+     "output": 293014,
+     "reasoning": 176248,
+     "cache_read": 165409111,
+     "cache_write": 0
+    },
+    "cost": 1.1215,
+    "cost_db": 0.0,
+    "cost_est": 1.1215,
+    "status": "estimated",
+    "sessions": 29
+   },
+   "deepseek/deepseek-v4-flash": {
+    "tokens": {
+     "input": 3896218,
+     "output": 262085,
+     "reasoning": 488821,
+     "cache_read": 137879662,
+     "cache_write": 0
+    },
+    "cost": 0.7811,
+    "cost_db": 0.7811,
+    "cost_est": 0.0,
+    "status": "billed",
+    "sessions": 21
+   },
+   "volcengine-ark/deepseek-v4-flash": {
+    "tokens": {
+     "input": 3992154,
+     "output": 117199,
+     "reasoning": 214585,
+     "cache_read": 99088896,
+     "cache_write": 0
+    },
+    "cost": 0.9419,
+    "cost_db": 0.0,
+    "cost_est": 0.9419,
+    "status": "estimated",
+    "sessions": 1
+   },
+   "nexus-staging/gpt-5.6": {
+    "tokens": {
+     "input": 506964,
+     "output": 17070,
+     "reasoning": 0,
+     "cache_read": 12014788,
+     "cache_write": 0
+    },
+    "cost": 0.0,
+    "cost_db": 0.0,
+    "cost_est": 0.0,
+    "status": "unknown",
+    "sessions": 1
+   },
+   "volcengine-ark/glm-5.3": {
+    "tokens": {
+     "input": 289914,
+     "output": 13612,
+     "reasoning": 204952,
+     "cache_read": 4594112,
+     "cache_write": 0
+    },
+    "cost": 0.4795,
+    "cost_db": 0.0,
+    "cost_est": 0.4795,
+    "status": "estimated",
+    "sessions": 11
+   },
+   "volcengine-ark/glm-5-3-flash": {
+    "tokens": {
+     "input": 67015,
+     "output": 837,
+     "reasoning": 3785,
+     "cache_read": 58304,
+     "cache_write": 0
+    },
+    "cost": 0.0039,
+    "cost_db": 0.0,
+    "cost_est": 0.0039,
+    "status": "estimated",
+    "sessions": 3
+   },
+   "zhipu-coding-plan/glm-5.3": {
+    "tokens": {
+     "input": 0,
+     "output": 0,
+     "reasoning": 0,
+     "cache_read": 0,
+     "cache_write": 0
+    },
+    "cost": 0.0,
+    "cost_db": 0.0,
+    "cost_est": 0.0,
+    "status": "unknown",
+    "sessions": 1
+   }
+  },
+  "by_day": {
+   "2026-09-11": {
+    "input": 3279803,
+    "output": 179412,
+    "reasoning": 276068,
+    "cache_read": 117312370,
+    "cache_write": 0
+   },
+   "2026-09-15": {
+    "input": 3774023,
+    "output": 270428,
+    "reasoning": 195907,
+    "cache_read": 171114711,
+    "cache_write": 0
+   },
+   "2026-09-17": {
+    "input": 28454,
+    "output": 199,
+    "reasoning": 54,
+    "cache_read": 28288,
+    "cache_write": 0
+   },
+   "2026-09-20": {
+    "input": 88559,
+    "output": 6407,
+    "reasoning": 44748,
+    "cache_read": 1292096,
+    "cache_write": 0
+   },
+   "2026-09-21": {
+    "input": 4159100,
+    "output": 122570,
+    "reasoning": 372649,
+    "cache_read": 102078656,
+    "cache_write": 0
+   },
+   "2026-09-22": {
+    "input": 4560435,
+    "output": 216752,
+    "reasoning": 471152,
+    "cache_read": 256411648,
+    "cache_write": 0
+   },
+   "2026-09-23": {
+    "input": 2562184,
+    "output": 255652,
+    "reasoning": 558937,
+    "cache_read": 93110208,
+    "cache_write": 0
+   },
+   "2026-09-24": {
+    "input": 1299880,
+    "output": 132755,
+    "reasoning": 177067,
+    "cache_read": 23961856,
+    "cache_write": 0
+   }
+  },
+  "cost_billed_real": 2.8825,
+  "cost_estimated_subscription": 2.5469,
+  "estimated_models_need_review": [
+   "volcengine-ark/deepseek-v4-flash",
+   "volcengine-ark/glm-5-3-flash",
+   "volcengine-ark/glm-5.3",
+   "zhipu-coding-plan/glm-5.3",
+   "zhipu-coding-plan/glm-5.3-flash"
+  ],
+  "unknown_price_models_usage": {
+   "nexus-staging/gpt-5.6": 12538822
+  },
+  "cache_hit_rate": 0.9748
+ },
+ "review": [],
+ "by_milestone": [
+  {
+   "id": "起步",
+   "title": "硬件选型与设计审阅(M0前)",
+   "basis": "首会话 09-11 16:26 分析C:\\Temp\\ESP32文档; 09-15 集中审阅",
+   "date": "2026-09-11",
+   "tokens": {
+    "input": 3279803,
+    "output": 179412,
+    "reasoning": 276068,
+    "cache_read": 117312370,
+    "cache_write": 0
+   },
+   "total": 121047653,
+   "cost_db": 0.3143,
+   "cost_est": 0.0039,
+   "n_sessions": 17,
+   "n_subagent": 11,
+   "active_days": 1,
+   "span_days": 1,
+   "tokens_per_active_day": 121047653
+  },
+  {
+   "id": "M0",
+   "title": "可测试需求与决策基线",
+   "basis": "开发准备就绪核查.md(2026-09-20); 开发骨架与契约冻结(2026-09-20)",
+   "date": "2026-09-20",
+   "tokens": {
+    "input": 3891036,
+    "output": 277034,
+    "reasoning": 240709,
+    "cache_read": 172435095,
+    "cache_write": 0
+   },
+   "total": 176843874,
+   "cost_db": 0.3726,
+   "cost_est": 1.0702,
+   "n_sessions": 24,
+   "n_subagent": 21,
+   "active_days": 3,
+   "span_days": 9,
+   "tokens_per_active_day": 58947958
+  },
+  {
+   "id": "M1",
+   "title": "安全草稿通道最小闭环",
+   "basis": "09-21 TDD波次完成(Core state machine/Bridge HTTP/TUI plugin/Windows host entry, 15:43最后波次); M2演示前桥接已通",
+   "date": "2026-09-21",
+   "tokens": {
+    "input": 4159100,
+    "output": 122570,
+    "reasoning": 372649,
+    "cache_read": 102078656,
+    "cache_write": 0
+   },
+   "total": 106732975,
+   "cost_db": 0.0,
+   "cost_est": 1.2333,
+   "n_sessions": 7,
+   "n_subagent": 6,
+   "active_days": 1,
+   "span_days": 1,
+   "tokens_per_active_day": 106732975
+  },
+  {
+   "id": "M2",
+   "title": "真实StickS3录音到Windows内存",
+   "basis": "evidence/M2/2026-09-22-M2演示执行记录.md",
+   "date": "2026-09-22",
+   "tokens": {
+    "input": 4560435,
+    "output": 216752,
+    "reasoning": 471152,
+    "cache_read": 256411648,
+    "cache_write": 0
+   },
+   "total": 261659987,
+   "cost_db": 1.1235,
+   "cost_est": 0.0,
+   "n_sessions": 6,
+   "n_subagent": 5,
+   "active_days": 1,
+   "span_days": 1,
+   "tokens_per_active_day": 261659987
+  },
+  {
+   "id": "M3",
+   "title": "真实语音→智谱→指定草稿(核心闭环)",
+   "basis": "evidence/M3/2026-09-23-162541-M3人工闭环确认.md; 2026-09-23-M3故事4纵切闭环.md; 追加草稿一跳待完成",
+   "date": "2026-09-23",
+   "tokens": {
+    "input": 2562184,
+    "output": 255652,
+    "reasoning": 558937,
+    "cache_read": 93110208,
+    "cache_write": 0
+   },
+   "total": 96486981,
+   "cost_db": 0.9587,
+   "cost_est": 0.0797,
+   "n_sessions": 25,
+   "n_subagent": 6,
+   "active_days": 1,
+   "span_days": 1,
+   "tokens_per_active_day": 96486981
+  },
+  {
+   "id": "M4",
+   "title": "可日常使用的状态屏与托盘(进行中)",
+   "basis": "未达成, 作为尾部开放段占位",
+   "date": "2099-01-01",
+   "tokens": {
+    "input": 1299880,
+    "output": 132755,
+    "reasoning": 177067,
+    "cache_read": 23961856,
+    "cache_write": 0
+   },
+   "total": 25571558,
+   "cost_db": 0.1134,
+   "cost_est": 0.1598,
+   "n_sessions": 8,
+   "n_subagent": 6,
+   "active_days": 1,
+   "span_days": 26398,
+   "tokens_per_active_day": 25571558
+  }
+ ]
+}
