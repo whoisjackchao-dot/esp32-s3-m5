@@ -1,0 +1,319 @@
+{
+  "samples": [
+    {
+      "id": "q4-01",
+      "_组": "中文基础",
+      "wav": "captures/q04/q4-01.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-02",
+      "_组": "中文基础",
+      "wav": "captures/q04/q4-02.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-03",
+      "_组": "中文基础",
+      "wav": "captures/q04/q4-03.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-04",
+      "_组": "英文术语",
+      "wav": "captures/q04/q4-04.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-05",
+      "_组": "英文术语",
+      "wav": "captures/q04/q4-05.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-06",
+      "_组": "英文术语",
+      "wav": "captures/q04/q4-06.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-07",
+      "_组": "数字版本",
+      "wav": "captures/q04/q4-07.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-08",
+      "_组": "数字版本",
+      "wav": "captures/q04/q4-08.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-09",
+      "_组": "数字版本",
+      "wav": "captures/q04/q4-09.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-10",
+      "_组": "否定条件",
+      "wav": "captures/q04/q4-10.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-11",
+      "_组": "否定条件",
+      "wav": "captures/q04/q4-11.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-12",
+      "_组": "否定条件",
+      "wav": "captures/q04/q4-12.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-13",
+      "_组": "文件名路径",
+      "wav": "captures/q04/q4-13.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-14",
+      "_组": "文件名路径",
+      "wav": "captures/q04/q4-14.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-15",
+      "_组": "文件名路径",
+      "wav": "captures/q04/q4-15.wav",
+      "wav_sha256": "<待填：录音 SHA256（64位小写hex）>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "<待填：你定稿的口述原文>",
+      "key_slots": {
+        "negation": "<待填或 无>",
+        "action_object": "<待填或 无>",
+        "number": "<待填或 无>",
+        "file_path": "<待填或 无>"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    }
+  ]
+}

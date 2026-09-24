@@ -1,0 +1,334 @@
+{
+  "samples": [
+    {
+      "id": "q4-01",
+      "_组": "中文基础",
+      "wav": "captures/q04/q4-01.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "请把用户登录函数重构成三个小函数",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "用户登录函数",
+        "number": "无",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-02",
+      "_组": "中文基础",
+      "wav": "captures/q04/q4-02.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "先检查参数是否为空，再查询数据库",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "参数",
+        "number": "无",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-03",
+      "_组": "中文基础",
+      "wav": "captures/q04/q4-03.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "把这个模块拆成配置和日志两个独立部分",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "这个模块",
+        "number": "无",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-04",
+      "_组": "英文术语",
+      "wav": "captures/q04/q4-04.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [
+        "useState"
+      ],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "用 useState 管理输入框的状态",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "useState",
+        "number": "无",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-05",
+      "_组": "英文术语",
+      "wav": "captures/q04/q4-05.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [
+        "fetchUserProfile"
+      ],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "调用 fetchUserProfile 获取用户信息",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "fetchUserProfile",
+        "number": "无",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-06",
+      "_组": "英文术语",
+      "wav": "captures/q04/q4-06.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [
+        "handleSubmit",
+        "async"
+      ],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "把 handleSubmit 改成 async 异步函数",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "handleSubmit",
+        "number": "无",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-07",
+      "_组": "数字版本",
+      "wav": "captures/q04/q4-07.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "把请求超时时间设为 1.5 秒",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "请求超时时间",
+        "number": "1.5",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-08",
+      "_组": "数字版本",
+      "wav": "captures/q04/q4-08.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [
+        "v2.10.1"
+      ],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "把依赖升级到 v2.10.1 版本",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "依赖",
+        "number": "v2.10.1",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-09",
+      "_组": "数字版本",
+      "wav": "captures/q04/q4-09.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "把数组下界改成 -5",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "数组下界",
+        "number": "-5",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-10",
+      "_组": "否定条件",
+      "wav": "captures/q04/q4-10.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "不要删除临时文件，先做备份",
+      "key_slots": {
+        "negation": "不要",
+        "action_object": "临时文件",
+        "number": "无",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-11",
+      "_组": "否定条件",
+      "wav": "captures/q04/q4-11.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "如果不能连接数据库就直接返回错误",
+      "key_slots": {
+        "negation": "不能",
+        "action_object": "数据库",
+        "number": "无",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-12",
+      "_组": "否定条件",
+      "wav": "captures/q04/q4-12.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "如果缓存命中就跳过查询，不要重复请求",
+      "key_slots": {
+        "negation": "不要",
+        "action_object": "查询",
+        "number": "无",
+        "file_path": "无"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-13",
+      "_组": "文件名路径",
+      "wav": "captures/q04/q4-13.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [
+        "src/main.py"
+      ],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "打开 src/main.py 找到入口函数",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "入口函数",
+        "number": "无",
+        "file_path": "src/main.py"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-14",
+      "_组": "文件名路径",
+      "wav": "captures/q04/q4-14.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [
+        "logs/app.log"
+      ],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "把日志输出写到 logs/app.log",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "日志输出",
+        "number": "无",
+        "file_path": "logs/app.log"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    },
+    {
+      "id": "q4-15",
+      "_组": "文件名路径",
+      "wav": "captures/q04/q4-15.wav",
+      "wav_sha256": "<待填：录音SHA256>",
+      "speaker_authorized": true,
+      "language": "zh-CN",
+      "technical_words": [
+        "tests/test_api.py"
+      ],
+      "duration_s": 0,
+      "ambient_noise": "<待填>",
+      "device_distance_m": 0,
+      "reference_text": "检查 tests/test_api.py 里的测试用例",
+      "key_slots": {
+        "negation": "无",
+        "action_object": "测试用例",
+        "number": "无",
+        "file_path": "tests/test_api.py"
+      },
+      "acceptable_equivalents": [],
+      "audio_environment": "<待填，如 安静室内工位>"
+    }
+  ]
+}
