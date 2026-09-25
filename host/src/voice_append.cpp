@@ -6,6 +6,7 @@
 // 重新运行承担，M05 状态机将在单进程宿主增量中接管协调）。
 #include "append_ctl.h"
 #include "asr_adapter.h"
+#include "asr_credential.h"
 #include "asr_transport.h"
 
 #include <windows.h>
@@ -66,8 +67,15 @@ int wmain(int argc, wchar_t** argv) {
         return 2;
     }
     bool ok = false;
-    const std::string key     = envOrUtf8(L"STICKS3_ASR_KEY", ok);
-    const bool hasKey = ok && !key.empty();
+    std::string key = envOrUtf8(L"STICKS3_ASR_KEY", ok);
+    if (key.empty()) {
+        char cred[512];
+        if (asr_cred_load(cred, sizeof(cred)) == ASR_CRED_OK) {
+            key = cred;
+            SecureZeroMemory(cred, sizeof(cred));
+        }
+    }
+    const bool hasKey = !key.empty();
     const std::string url     = envOrUtf8(L"STICKS3_BRIDGE_URL", ok);
     const bool hasUrl = ok;
     const std::string token   = envOrUtf8(L"STICKS3_BRIDGE_TOKEN", ok);
