@@ -361,3 +361,14 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **效力边界**：观察到 **SSE 约每 ~20s 自动重订阅**（host 能恢复，根因未定位）；桥接仅在 **10s 心跳**重发快照 → 设备更新延迟 **≤~10s**（更低需插件改事件即时推送）；未做 Windows 服务/托盘包装与长时稳定性。
 - **证据**：[evidence/M4/2026-09-25-S4.2-生产host.md](./evidence/M4/2026-09-25-S4.2-生产host.md)。
 
+### 2026-09-25 工作登记（Sisyphus）——桥接 SSE 长连修复 + 事件即时推送（#3/#4）
+
+**背景**：生产 host 运行中观察到 SSE 约每 ~20s 被重订阅。按调试方法论实测定位。
+
+- **根因（已定位）**：`Bun.serve` **默认 `idleTimeout=10s`** 会关闭空闲连接，**安静的 SSE 也算空闲**；插件桥接 `Bun.serve({...})` 未设该值，而心跳恰为 **10s** → 必竞态。实测 WSL 侧直连 curl `time=16.0/20.0s exit=18`（abrupt close），Windows 侧同 —— **两侧都被服务端切断**（非 Windows↔WSL 转发）。依据：Bun 官方文档 `idleTimeout`（默认 10s，SSE 需 `server.timeout(req, 0)`）。
+- **修复 #4**：`plugin/src/bridge/server.ts` SSE 路由加 `server.timeout(req, 0)`（不改冻结的 `core/types.ts`，按 M4 先例在 bridge 模块扩展 `BridgeServerHandle`）。
+- **修复 #3（降延迟）**：新增 `bridge.broadcast()`；`index.ts` 的 `refreshState` 在 `store.ingest` 结果为 `applied` 时**立即推送**，不再仅靠 10s 心跳（原延迟 ≤10s）。
+- **验证**：真实代码探针（加载真实 `startBridge`）——长连 **35s 不再中断**（`exit=28` 跑满）、broadcast 于 **3s/6s 即时到达**；回归 `bun test` **111 pass / 1 skip / 0 fail**（含 opt-in 22s idle 长测 5 pass）、`tsc` exit 0。
+- **⚠ 生效条件**：修复随**下次 OpenCode 重启**加载（当前实例仍为旧代码）。
+- **证据**：并入 [evidence/M4/2026-09-25-S4.2-生产host.md](./evidence/M4/2026-09-25-S4.2-生产host.md) §5。
+
