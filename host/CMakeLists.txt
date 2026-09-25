@@ -21,3 +21,9 @@ target_link_libraries(toolchain_check PRIVATE user32)
 add_executable(sticks3_host_entry src/host_entry.cpp)
 target_compile_definitions(sticks3_host_entry PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(sticks3_host_entry PRIVATE winhttp)
+
+# M4 托盘（S4.7）：Win32 托盘壳 + 桥接健康 + Key 菜单（无 WinRT 依赖）
+add_executable(tray src/tray.cpp)
+set_target_properties(tray PROPERTIES WIN32_EXECUTABLE TRUE)
+target_compile_definitions(tray PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_link_libraries(tray PRIVATE user32 shell32 winhttp)
