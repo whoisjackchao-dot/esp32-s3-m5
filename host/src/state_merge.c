@@ -3,15 +3,30 @@
 
 #include <string.h>
 
+// UTF-8 码点安全截断：不切断多字节序列（与 s3p_state 的 utf8_clip 同义）。
+static size_t utf8_clip(const char *s, size_t cap) {
+    const size_t n = strlen(s);
+    if (n <= cap) {
+        return n;
+    }
+    size_t i = 0;
+    while (i < cap) {
+        const unsigned char c = (unsigned char)s[i];
+        const size_t seq = (c < 0x80u) ? 1u : (c < 0xE0u) ? 2u : (c < 0xF0u) ? 3u : 4u;
+        if (i + seq > cap) {
+            break;
+        }
+        i += seq;
+    }
+    return i;
+}
+
 static void copy_text(char *dst, const char *src) {
     if (!src) {
         dst[0] = '\0';
         return;
     }
-    size_t n = strlen(src);
-    if (n > S3P_STATE_MAX_TEXT) {
-        n = S3P_STATE_MAX_TEXT;
-    }
+    const size_t n = utf8_clip(src, S3P_STATE_MAX_TEXT);
     memcpy(dst, src, n);
     dst[n] = '\0';
 }

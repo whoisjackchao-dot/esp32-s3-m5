@@ -85,10 +85,21 @@ static void test_todo_unknown(void) {
     ck(out.todo_completed == 0 && out.todo_total == 0, "todo unknown -> 0/0");
 }
 
+static void test_title_utf8_clip(void) {
+    br03_snapshot in = base();
+    in.title = "\xe4\xb8\x80\xe4\xba\x8c\xe4\xb8\x89\xe5\x9b\x9b\xe4\xba\x94\xe5\x85\xad\xe4\xb8\x83\xe5\x85\xab\xe4\xb9\x9d\xe5\x8d\x81\xe5\x8d\x81\xe4\xb8\x80";  // 11 CJK = 33 bytes (> 32)
+    s3p_state_snapshot out;
+    state_merge(&out, &in);
+    ck(strlen(out.title) == 30, "utf8: clipped to 10 CJK chars (30 bytes), not 32");
+    const unsigned char last = (unsigned char)out.title[29];
+    ck((last & 0xC0u) == 0x80u, "utf8: no split multibyte char at boundary");
+}
+
 int main(void) {
     test_minimal();
     test_full();
     test_todo_unknown();
+    test_title_utf8_clip();
     printf("%d checks, %d failures\n", g_checks, g_fail);
     return g_fail == 0 ? 0 : 1;
 }
