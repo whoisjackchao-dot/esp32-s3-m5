@@ -342,3 +342,12 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 
 **未竟 / 下一步**：S4.2 生产 host（托盘订阅 `state/stream` + 真实快照合并 → BLE 下发，**待范围确认**）；S4.7d（待 host 常驻服务 + IPC-02 冻结）；M3 Q04 语料采音暂存；C10 待冻结项（中文字体 / 长按阈值 / 息屏细节 / LVGL）。
 
+### 2026-09-25 工作登记（Sisyphus）——S4.2 生产 host「验证增量」PASS（状态源=真实快照）
+
+**范围裁定（用户）**：今天做 **S4.2 验证增量**——`ble_client` 状态源由 binding 改为 `/v1/state/stream` **真实快照**，不锁定常驻/托盘进程形态；**STATE 载荷不加 `voicePhase`**（维持 v1.0）。
+
+- **端到端 PASS（2026-09-25 实测）**：重建 `ble_client.exe`（`BUILD_OK`）→ 复位设备（COM5）→ `bridge_env.ps1` 装载 → 运行。关键证据：`[PASS] write STATE | src=snapshot status=2 flags=0x39 rev=1 len=71`（**src=snapshot** ＝真实快照路径，非 binding 回退）；设备串口回显 `ble_gatt: host STATE status=2 flags=0x39 rev=1 tools=0`（与下发一致）；会话 500 帧、`reasm COMPLETE`、独立 FNV-1a 一致、`ble_client PASS`（exit 0）。
+- **文档更正**：M4 §7 原述"现 `ble_client` 状态源为桥接 binding"**已过时**——代码（`read_bridge_snapshot`）早已实现 snapshot 源，本次**实测证实**并回写该行。
+- **仍未交付**：**常驻/托盘形态的生产 host**（持续订阅 + 重连 + 长时会话稳定性）；S4.7d（待 host 常驻服务 + IPC-02）。
+- **证据**：[evidence/M4/2026-09-25-S4.2-snapshot源端到端.md](./evidence/M4/2026-09-25-S4.2-snapshot源端到端.md)。
+
