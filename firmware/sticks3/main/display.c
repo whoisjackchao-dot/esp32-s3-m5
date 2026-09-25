@@ -4,6 +4,7 @@
 
 #include "audio_session.h"
 #include "ble_gatt.h"
+#include "s3p_state.h"
 #include "driver/gpio.h"
 #include "driver/i2c.h"
 #include "driver/spi_master.h"
@@ -108,18 +109,36 @@ static void draw_boot_pattern(void) {
     esp_lcd_panel_draw_bitmap(s_panel, 0, 0, DISP_W, DISP_H, s_fb);
 }
 
-/* 状态帧：底色 + 主机状态文字（M2 纵切：未知必须如实显示）+ BLE 行 + 录音标 */
-static void render_frame(bool connected, bool recording, bool state_valid,
-                         bool busy) {
+/* 状态文字（M4 STATE 契约 v1.0）：未知不伪装、错误不冒充 idle（ST-04）。 */
+static const char *status_text(uint8_t status) {
+    switch (status) {
+        case S3P_STATUS_IDLE:
+            return "IDLE";
+        case S3P_STATUS_BUSY:
+            return "BUSY";
+        case S3P_STATUS_RETRY:
+            return "RETRY";
+        case S3P_STATUS_WAITING:
+            return "WAIT";
+        case S3P_STATUS_ERROR:
+            return "ERROR";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+/* 状态帧：底色 + 主机状态文字（未知必须如实显示）+ BLE 行 + 录音标 */
+static void render_frame(bool connected, bool recording, bool state_valid, uint8_t status) {
     fill(recording ? C_RED : (connected ? C_DGREEN : C_NAVY));
     draw_str(4, 4, "STICKS3", C_WHITE, 2);
     if (!state_valid) {
         draw_str(4, 36, "STATE", C_WHITE, 2);
         draw_str(4, 60, "UNKNOWN", C_YELLOW, 2);
-    } else if (busy) {
-        draw_str(4, 40, "BUSY", C_WHITE, 4);
     } else {
-        draw_str(4, 40, "IDLE", C_WHITE, 4);
+        const char *t = status_text(status);
+        const int len = (int)strlen(t);
+        const int sc = (len <= 4) ? 4 : (len <= 5) ? 3 : 2;
+        draw_str(4, 40, t, C_WHITE, sc);
     }
     draw_str(4, DISP_H - 44, connected ? "BLE:CONN" : "BLE:ADV", C_WHITE, 2);
     if (recording) {
@@ -133,20 +152,20 @@ static void display_task(void *arg) {
     bool last_conn = false;
     bool last_rec = false;
     bool last_valid = false;
-    bool last_busy = false;
+    uint8_t last_status = 0xFFu;
     bool first = true;
     for (;;) {
         const bool conn = ble_gatt_connected();
         const bool rec = audio_session_active();
         const bool valid = ble_gatt_host_state_valid();
-        const bool busy = ble_gatt_host_busy();
-        if (first || conn != last_conn || rec != last_rec ||
-            valid != last_valid || busy != last_busy) {
-            render_frame(conn, rec, valid, busy);
+        const uint8_t status = ble_gatt_host_status();
+        if (first || conn != last_conn || rec != last_rec || valid != last_valid ||
+            status != last_status) {
+            render_frame(conn, rec, valid, status);
             last_conn = conn;
             last_rec = rec;
             last_valid = valid;
-            last_busy = busy;
+            last_status = status;
             first = false;
             last_rendered = true;
         }

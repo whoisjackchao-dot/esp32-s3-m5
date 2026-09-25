@@ -1,6 +1,9 @@
 #include "ble_gatt.h"
 
+#include <stdbool.h>
 #include <string.h>
+
+#include "s3p_state.h"
 
 #include "esp_log.h"
 #include "host/ble_hs.h"
@@ -40,8 +43,9 @@ static bool s_event_subscribed;
 static uint16_t s_link_mtu;
 static uint16_t s_host_mtu;   /* READY{mtu} 上报值 */
 static uint8_t s_heartbeat_seq;
-static uint8_t s_state_snapver;
-static uint8_t s_state_bitmap; /* 临时位图：bit0=busy bit1=valid（M4 冻结） */
+static uint8_t s_state_status; /* S3P_STATUS_*：M4 STATE(0x12) 契约 v1.0 */
+static uint8_t s_state_flags;  /* S3P_FLAG_* */
+static bool s_state_valid;
 static ble_gatt_ctrl_cb_t s_ctrl_cb;
 static ble_gatt_disconnect_cb_t s_disconnect_cb;
 
@@ -96,11 +100,16 @@ void ble_gatt_set_disconnect_cb(ble_gatt_disconnect_cb_t cb) {
 }
 
 bool ble_gatt_host_state_valid(void) {
-    return (s_state_bitmap & 0x02u) != 0u;
+    return s_state_valid;
 }
 
 bool ble_gatt_host_busy(void) {
-    return (s_state_bitmap & 0x01u) != 0u;
+    return s_state_valid && (s_state_status == S3P_STATUS_BUSY || s_state_status == S3P_STATUS_RETRY ||
+                             s_state_status == S3P_STATUS_WAITING);
+}
+
+uint8_t ble_gatt_host_status(void) {
+    return s_state_valid ? s_state_status : (uint8_t)S3P_STATUS_UNKNOWN;
 }
 
 static esp_err_t notify_value(uint16_t val_handle, bool subscribed,
@@ -148,9 +157,12 @@ static int chr_ctrl_access(uint16_t conn_handle, uint16_t attr_handle,
     if (om_len < 1) {
         return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
     }
-    uint8_t buf[8] = {0};
-    uint16_t copy = om_len < sizeof(buf) ? om_len : (uint16_t)sizeof(buf);
-    ble_hs_mbuf_to_flat(ctxt->om, buf, copy, NULL);
+    if (om_len > S3P_STATE_MAX_LEN) {
+        ESP_LOGW(TAG, "控制写入过长: %u", (unsigned)om_len);
+        return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
+    }
+    uint8_t buf[S3P_STATE_MAX_LEN] = {0};
+    ble_hs_mbuf_to_flat(ctxt->om, buf, om_len, NULL);
 
     switch (buf[0]) {
     case 0x10: /* READY{protocolVersion u8, mtu u16 LE}，共 4 字节 */
@@ -172,18 +184,20 @@ static int chr_ctrl_access(uint16_t conn_handle, uint16_t attr_handle,
         s_heartbeat_seq = buf[1];
         ESP_LOGI(TAG, "host HEARTBEAT: seq=%u", s_heartbeat_seq);
         break;
-    case 0x12: /* STATE{快照版本 u8 + 状态位图 u8}，共 4 字节。
-                * 位图语义为 M2 纵切草案（bit0=busy bit1=valid），M4 冻结。 */
-        if (om_len != 4) {
-            ESP_LOGW(TAG, "STATE 长度异常: %u", om_len);
+    case 0x12: { /* STATE：M4 契约 v1.0（contracts/M4-STATE快照冻结.md） */
+        s3p_state_snapshot st;
+        if (!s3p_state_decode(buf, om_len, &st)) {
+            ESP_LOGW(TAG, "STATE 解码失败 len=%u", (unsigned)om_len);
             return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
         }
-        s_state_snapver = buf[2];
-        s_state_bitmap = buf[3];
-        ESP_LOGI(TAG, "host STATE snapver=%u bitmap=0x%02x (%s)",
-                 s_state_snapver, s_state_bitmap,
-                 (s_state_bitmap & 0x02u) ? ((s_state_bitmap & 0x01u) ? "BUSY" : "IDLE") : "UNKNOWN");
+        s_state_status = st.status;
+        s_state_flags = st.flags;
+        s_state_valid = true;
+        ESP_LOGI(TAG, "host STATE status=%u flags=0x%02x rev=%lu tools=%u",
+                 (unsigned)st.status, (unsigned)st.flags, (unsigned long)st.revision,
+                 (unsigned)st.tool_count);
         break;
+    }
     case 0x7F: /* 测试专用：让设备主动断开链路，供 Q05「重连不重放」确定性验证。
                 * 生产固件不应依赖此消息（保留值，非冻结契约的一部分）。 */
         ESP_LOGW(TAG, "测试钩子：主动断开 conn=%u", s_conn_handle);
@@ -262,7 +276,7 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg) {
         s_event_subscribed = false;
         s_link_mtu = 0;
         s_host_mtu = 0;
-        s_state_bitmap = 0; /* 断开后主机状态失效 → 屏幕回落 UNKNOWN */
+        s_state_valid = false; /* 断开后主机状态失效 → 屏幕回落 UNKNOWN */
         if (s_disconnect_cb) {
             s_disconnect_cb();
         }
