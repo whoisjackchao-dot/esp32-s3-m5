@@ -220,8 +220,11 @@ static void render_page(int page, bool connected, bool recording) {
             draw_str(100, 22, "STALE", C_YELLOW, 1);
         }
         if (s_bat_valid) {
-            snprintf(b, sizeof(b), "BAT %d%%%s", s_bat_pct, s_bat_charging ? " CHG" : "");
-            draw_str(4, 210, b, C_WHITE, 1);
+            snprintf(b, sizeof(b), "BAT %d%%", s_bat_pct);
+            draw_str(4, 204, b, C_BLUE3399, 2);
+            if (s_bat_charging) {
+                draw_str(DISP_W - 32, 208, "CHG", C_BLUE3399, 1);
+            }
         }
     } else if (page == 1) {
         draw_title("TASK");
