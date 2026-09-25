@@ -38,6 +38,12 @@ static const char *TAG = "display";
 static esp_lcd_panel_handle_t s_panel;
 static uint16_t s_fb[DISP_W * DISP_H];
 
+/* ST7789(SPI) 像素高字节在前，而 ESP32 帧缓冲 uint16 为小端 → 写前交换字节。
+ * 否则 G/B 位互换：黄显示成紫、紫显示成绿（用户目视发现，2026-09-26）。 */
+static inline uint16_t pxswap(uint16_t c) {
+    return (uint16_t)((uint16_t)(c >> 8) | (uint16_t)(c << 8));
+}
+
 /* RGB565 */
 #define C_BLACK  0x0000
 #define C_PURPLE 0xCA9F /* 淡紫 #CC99FF */
@@ -67,7 +73,7 @@ static void draw_char8(int x, int y, char c, uint16_t color, int scale) {
                     const int px = x + col * scale + sx;
                     const int py = y + row * scale + sy;
                     if (px < DISP_W && py < DISP_H) {
-                        s_fb[py * DISP_W + px] = color;
+                        s_fb[py * DISP_W + px] = pxswap(color);
                     }
                 }
             }
@@ -118,7 +124,7 @@ static void pm1_l3b_apply(bool on) {
 
 static void fill(uint16_t color) {
     for (size_t i = 0; i < DISP_W * DISP_H; ++i) {
-        s_fb[i] = color;
+        s_fb[i] = pxswap(color);
     }
     esp_lcd_panel_draw_bitmap(s_panel, 0, 0, DISP_W, DISP_H, s_fb);
 }
@@ -129,13 +135,13 @@ static void draw_boot_pattern(void) {
         const uint16_t c =
             (y < DISP_H / 3) ? C_RED : (y < 2 * DISP_H / 3) ? C_GREEN : C_BLUE;
         for (int x = 0; x < DISP_W; ++x) {
-            s_fb[y * DISP_W + x] = c;
+            s_fb[y * DISP_W + x] = pxswap(c);
         }
     }
     for (int y = 0; y < 8; ++y) {
         for (int x = 0; x < 8; ++x) {
-            s_fb[y * DISP_W + x] = C_WHITE;
-            s_fb[y * DISP_W + (DISP_W - 1 - x)] = C_WHITE;
+            s_fb[y * DISP_W + x] = pxswap(C_WHITE);
+            s_fb[y * DISP_W + (DISP_W - 1 - x)] = pxswap(C_WHITE);
         }
     }
     esp_lcd_panel_draw_bitmap(s_panel, 0, 0, DISP_W, DISP_H, s_fb);
