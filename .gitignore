@@ -28,3 +28,6 @@ host/src/*.exe
 
 # 演示用捕获产物（可由 tools/make_synth_capture.py 重新生成，不入库）
 captures/
+
+# 屏幕模拟输出（可由 tools/gen_screen_mock.py 重新生成，不入库）
+screen_mock*.png
