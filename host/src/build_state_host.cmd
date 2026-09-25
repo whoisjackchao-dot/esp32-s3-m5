@@ -15,6 +15,6 @@ if not exist "%CPPWINRT_GEN%\winrt\base.h" (
   echo ERROR: modern cppwinrt headers missing: %CPPWINRT_GEN%\winrt\base.h
   exit /b 1
 )
-cl /nologo /W4 /utf-8 /std:c++17 /await /EHsc /I"%CPPWINRT_GEN%" /Fe:state_host.exe state_host.cpp state_merge.c s3p_reasm.c "..\..\firmware\sticks3\main\s3p_state.c" /I"..\..\firmware\sticks3\main" /link windowsapp.lib
+cl /nologo /W4 /utf-8 /std:c++17 /await /EHsc /I"%CPPWINRT_GEN%" /Fe:state_host.exe state_host.cpp state_merge.c s3p_reasm.c retry_store.c "..\..\firmware\sticks3\main\s3p_state.c" /I"..\..\firmware\sticks3\main" /link windowsapp.lib
 if errorlevel 1 exit /b 1
 echo BUILD_OK

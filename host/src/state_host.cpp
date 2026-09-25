@@ -21,6 +21,7 @@
 #pragma comment(lib, "winhttp.lib")
 
 extern "C" {
+#include "retry_store.h"
 #include "s3p_proto.h"
 #include "s3p_reasm.h"
 #include "s3p_state.h"
@@ -56,6 +57,9 @@ static uint32_t g_last_samples = 0;
 static uint32_t g_last_summary = 0;
 static int g_last_end_rc = -1;
 static bool g_session_captured = false;
+static retry_store g_retry;
+static uint8_t g_held[256 * 1024 + 64];
+static size_t g_held_len = 0;
 
 static void say(const char* msg) {
     std::printf("[state_host] %s\n", msg);
@@ -150,6 +154,33 @@ static void on_audio(GattCharacteristic const&, GattValueChangedEventArgs const&
             g_last_end_rc = (int)s3p_reasm_end(g_reasm, s3p_get_u32(p + 2), g_last_frames,
                                                g_last_samples, g_last_summary);
             g_session_captured = true;
+            if (g_last_end_rc == (int)S3P_REASM_OK) {
+                g_held_len = 0;
+                if (sizeof(g_held) >= 12) {
+                    std::memcpy(g_held, "S3PO", 4);
+                    std::memcpy(g_held + 4, &g_last_rec, 4);
+                    std::memcpy(g_held + 8, &g_last_frames, 4);
+                    size_t off = 12;
+                    for (uint32_t s = 0; s < g_last_frames && off + 6 <= sizeof(g_held); ++s) {
+                        const size_t l = s3p_reasm_read_frame(g_reasm, s, g_fb, sizeof(g_fb));
+                        const uint16_t l16 = (uint16_t)l;
+                        if (off + 6 + l > sizeof(g_held)) break;
+                        std::memcpy(g_held + off, &s, 4);
+                        off += 4;
+                        std::memcpy(g_held + off, &l16, 2);
+                        off += 2;
+                        if (l) {
+                            std::memcpy(g_held + off, g_fb, l);
+                            off += l;
+                        }
+                    }
+                    g_held_len = off;
+                }
+                retry_store_note(&g_retry, RETRY_FAILED, true, false, "", false, GetTickCount());
+                std::printf("[state_host] retry: audio held (%zu B) can_recognize=%d\n", g_held_len,
+                            (int)retry_can_recognize(&g_retry, GetTickCount()));
+                std::fflush(stdout);
+            }
             const char* capdir = std::getenv("STICKS3_CAPTURE_DIR");
             std::printf("[state_host] session END frames=%lu samples=%lu rc=%d\n",
                         (unsigned long)g_last_frames, (unsigned long)g_last_samples, g_last_end_rc);
@@ -267,6 +298,7 @@ static bool deadline_hit(DWORD deadline) {
 }
 
 static int run_host() {
+    retry_store_init(&g_retry);
     const char* sec = std::getenv("STICKS3_HOST_SECONDS");
     const DWORD deadline = (sec && std::atoi(sec) > 0) ? (GetTickCount() + (DWORD)std::atoi(sec) * 1000u) : 0;
 
