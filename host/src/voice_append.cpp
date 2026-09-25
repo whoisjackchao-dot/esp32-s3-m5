@@ -4,6 +4,7 @@
 // 桥接：环境变量同 host_entry（URL/TOKEN/TUI_EPOCH/SESSION_ID）。
 // 语义：ASR_OK→追加；EMPTY_TEXT→不填入退出；失败→按类报错退出（手动重试由
 // 重新运行承担，M05 状态机将在单进程宿主增量中接管协调）。
+#include "append_ctl.h"
 #include "asr_adapter.h"
 #include "asr_transport.h"
 
@@ -55,25 +56,6 @@ std::string randomOperationID() {
     std::string id = "op_";
     for (int i = 0; i < 29; ++i) { id += hex[gen() & 0xF]; }
     return id;
-}
-
-std::string jsonEscape(const std::string& s) {
-    std::string out;
-    for (const unsigned char c : s) {
-        switch (c) {
-            case '"':  out += "\\\""; break;
-            case '\\': out += "\\\\"; break;
-            case '\b': out += "\\b"; break;
-            case '\f': out += "\\f"; break;
-            case '\n': out += "\\n"; break;
-            case '\r': out += "\\r"; break;
-            case '\t': out += "\\t"; break;
-            default:
-                if (c < 0x20) { char b[8]; std::snprintf(b, sizeof(b), "\\u%04x", c); out += b; }
-                else { out += static_cast<char>(c); }
-        }
-    }
-    return out;
 }
 
 } // namespace
@@ -180,10 +162,11 @@ int wmain(int argc, wchar_t** argv) {
         return 2;
     }
     const std::string opID = randomOperationID();
-    std::string append = "{\"protocolVersion\":1,\"tuiEpoch\":\"" + jsonEscape(epoch)
-                       + "\",\"sessionID\":\"" + jsonEscape(session)
-                       + "\",\"operationID\":\"" + opID
-                       + "\",\"transactionGeneration\":1,\"text\":\"" + jsonEscape(text) + "\"}";
+    char appendBuf[16384];
+    const size_t appendLen = append_build_request(epoch.c_str(), session.c_str(), opID.c_str(), text,
+                                                  appendBuf, sizeof(appendBuf));
+    if (appendLen == 0) { std::fprintf(stderr, "[FAIL] append 请求构造失败\n"); return 2; }
+    std::string append(appendBuf, appendLen);
     const std::wstring whost(bhost.begin(), bhost.end());
     HINTERNET hs = WinHttpOpen(L"sticks3-voice/0.1", WINHTTP_ACCESS_TYPE_NO_PROXY,
                                WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
@@ -222,10 +205,11 @@ int wmain(int argc, wchar_t** argv) {
     WinHttpCloseHandle(hs);
 
     printf("[3] 桥接 HTTP %lu\n%s\n", static_cast<unsigned long>(statusCode), responseBody.c_str());
-    const bool applied = statusCode == 200 && responseBody.find("\"applied\"") != std::string::npos;
-    if (applied) printf("[PASS] 已填入草稿（未提交，请手动发送）\n");
-    else if (responseBody.find("\"processing\"") != std::string::npos) printf("结果: 处理中\n");
-    else if (responseBody.find("\"uncertain\"") != std::string::npos) printf("结果: 不确定，请人工检查草稿\n");
+    const append_outcome oc = append_classify(static_cast<int>(statusCode), responseBody.data(),
+                                              responseBody.size());
+    if (oc == APPEND_APPLIED) printf("[PASS] 已填入草稿（未提交，请手动发送）\n");
+    else if (oc == APPEND_PROCESSING) printf("结果: 处理中\n");
+    else if (oc == APPEND_UNCERTAIN) printf("结果: 不确定，请人工检查草稿\n");
     else printf("[FAIL] 未 applied\n");
-    return applied ? 0 : 1;
+    return oc == APPEND_APPLIED ? 0 : 1;
 }

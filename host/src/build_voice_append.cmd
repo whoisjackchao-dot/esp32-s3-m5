@@ -10,6 +10,6 @@ if not defined VCVARS (echo VCVARS_NOT_FOUND & exit /b 1)
 call "%VCVARS%" >nul 2>&1
 if errorlevel 1 (echo VCVARS_FAIL & exit /b 1)
 cd /d "%~dp0"
-cl /nologo /W4 /utf-8 /std:c++20 /EHsc /Fe:voice_append.exe voice_append.cpp asr_transport.c asr_adapter.c winhttp.lib
+cl /nologo /W4 /utf-8 /std:c++20 /EHsc /Fe:voice_append.exe voice_append.cpp asr_transport.c asr_adapter.c append_ctl.c winhttp.lib
 if errorlevel 1 exit /b 1
 echo BUILD_OK
