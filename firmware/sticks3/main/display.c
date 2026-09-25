@@ -39,6 +39,7 @@ static esp_lcd_panel_handle_t s_panel;
 static uint16_t s_fb[DISP_W * DISP_H];
 
 /* RGB565 */
+#define C_BLACK  0x0000
 #define C_WHITE  0xFFFF
 #define C_RED    0xF800
 #define C_GREEN  0x07E0
@@ -149,7 +150,7 @@ static void render_page(int page, bool connected, bool recording) {
     const bool valid = ble_gatt_host_state_valid();
     const s3p_state_snapshot *s = ble_gatt_host_snapshot();
     char b[40];
-    fill(recording ? C_RED : (connected ? C_DGREEN : C_NAVY));
+    fill(C_BLACK);
     draw_str(4, 4, "STICKS3", C_WHITE, 2);
     if (page == 0) {
         draw_str(4, 40, connected ? "BLE:CONN" : "BLE:ADV", C_WHITE, 1);
