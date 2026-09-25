@@ -1,5 +1,6 @@
 #include "display.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #include "audio_session.h"
@@ -127,49 +128,98 @@ static const char *status_text(uint8_t status) {
     }
 }
 
-/* 状态帧：底色 + 主机状态文字（未知必须如实显示）+ BLE 行 + 录音标 */
-static void render_frame(bool connected, bool recording, bool state_valid, uint8_t status) {
+/* 三页显示（M4/S4.3，英文界面）：状态 / 任务 / 用量；5s 自动翻页（切页归 S4.6 侧键）。 */
+static void draw_kv(int y, const char *k, const char *v) {
+    draw_str(4, y, k, C_YELLOW, 1);
+    draw_str(4 + (int)(strlen(k) + 1) * 8, y, v, C_WHITE, 1);
+}
+
+/* 用量三态：未知 "?" / 未报告 "-" / 具体值（不伪装 0，ST-08）。 */
+static void u32_text(char *out, size_t cap, uint32_t v) {
+    if (v == S3P_STATE_UNKNOWN) {
+        snprintf(out, cap, "?");
+    } else if (v == S3P_STATE_NOT_REPORTED) {
+        snprintf(out, cap, "-");
+    } else {
+        snprintf(out, cap, "%lu", (unsigned long)v);
+    }
+}
+
+static void render_page(int page, bool connected, bool recording) {
+    const bool valid = ble_gatt_host_state_valid();
+    const s3p_state_snapshot *s = ble_gatt_host_snapshot();
+    char b[40];
     fill(recording ? C_RED : (connected ? C_DGREEN : C_NAVY));
     draw_str(4, 4, "STICKS3", C_WHITE, 2);
-    if (!state_valid) {
-        draw_str(4, 36, "STATE", C_WHITE, 2);
-        draw_str(4, 60, "UNKNOWN", C_YELLOW, 2);
+    if (page == 0) {
+        draw_str(4, 40, connected ? "BLE:CONN" : "BLE:ADV", C_WHITE, 1);
+        draw_str(4, 54, valid ? "HOST:OK" : "HOST:--", C_WHITE, 1);
+        if (valid && (s->flags & S3P_FLAG_EXPIRED) != 0u) {
+            draw_str(96, 54, "STALE", C_YELLOW, 1);
+        }
+        draw_str(4, 80, valid ? status_text(s->status) : "NO STATE", C_WHITE, 2);
+        if (recording) {
+            draw_str(4, 120, "REC", C_WHITE, 2);
+        }
+    } else if (page == 1) {
+        draw_str(4, 4, "TASK", C_WHITE, 2);
+        draw_kv(40, "P:", (valid && s->project[0] != '\0') ? s->project : "-");
+        draw_kv(54, "T:", (valid && s->title[0] != '\0') ? s->title : "-");
+        if (valid) {
+            snprintf(b, sizeof(b), "%u", (unsigned)s->tool_count);
+        } else {
+            snprintf(b, sizeof(b), "-");
+        }
+        draw_kv(68, "TOOLS:", b);
+        if (valid) {
+            snprintf(b, sizeof(b), "%u/%u", (unsigned)s->todo_completed,
+                     (unsigned)s->todo_total);
+        } else {
+            snprintf(b, sizeof(b), "-");
+        }
+        draw_kv(82, "TODO:", b);
     } else {
-        const char *t = status_text(status);
-        const int len = (int)strlen(t);
-        const int sc = (len <= 4) ? 4 : (len <= 5) ? 3 : 2;
-        draw_str(4, 40, t, C_WHITE, sc);
+        draw_str(4, 4, "USAGE", C_WHITE, 2);
+        u32_text(b, sizeof(b), valid ? s->tokens_input : S3P_STATE_UNKNOWN);
+        draw_kv(40, "IN:", b);
+        u32_text(b, sizeof(b), valid ? s->tokens_output : S3P_STATE_UNKNOWN);
+        draw_kv(54, "OUT:", b);
+        u32_text(b, sizeof(b), valid ? s->cost_milli : S3P_STATE_UNKNOWN);
+        draw_kv(68, "COSTm:", b);
     }
-    draw_str(4, DISP_H - 44, connected ? "BLE:CONN" : "BLE:ADV", C_WHITE, 2);
-    if (recording) {
-        draw_str(4, DISP_H - 22, "REC", C_WHITE, 2);
-    }
+    snprintf(b, sizeof(b), "%d/3", page + 1);
+    draw_str(DISP_W - 24, DISP_H - 14, b, C_WHITE, 1);
 }
 
 static void display_task(void *arg) {
     (void)arg;
-    bool last_rendered = false;
     bool last_conn = false;
     bool last_rec = false;
     bool last_valid = false;
     uint8_t last_status = 0xFFu;
     bool first = true;
+    int page = 0;
+    TickType_t last_rotate = xTaskGetTickCount();
     for (;;) {
         const bool conn = ble_gatt_connected();
         const bool rec = audio_session_active();
         const bool valid = ble_gatt_host_state_valid();
         const uint8_t status = ble_gatt_host_status();
-        if (first || conn != last_conn || rec != last_rec || valid != last_valid ||
+        const TickType_t now = xTaskGetTickCount();
+        const bool rotate = (now - last_rotate) >= pdMS_TO_TICKS(5000);
+        if (rotate) {
+            page = (page + 1) % 3;
+            last_rotate = now;
+        }
+        if (rotate || first || conn != last_conn || rec != last_rec || valid != last_valid ||
             status != last_status) {
-            render_frame(conn, rec, valid, status);
+            render_page(page, conn, rec);
             last_conn = conn;
             last_rec = rec;
             last_valid = valid;
             last_status = status;
             first = false;
-            last_rendered = true;
         }
-        (void)last_rendered;
         vTaskDelay(pdMS_TO_TICKS(250));
     }
 }

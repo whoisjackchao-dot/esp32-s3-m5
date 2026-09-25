@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include "esp_err.h"
+#include "s3p_state.h"
 
 esp_err_t ble_gatt_init(void);
 
@@ -33,6 +34,8 @@ bool ble_gatt_host_busy(void);
 uint8_t ble_gatt_host_status(void);
 /* STATE 位图（含 S3P_FLAG_EXPIRED）；无效时为 0。 */
 uint8_t ble_gatt_host_flags(void);
+/* 最近一次 STATE 完整快照；无有效快照时返回 NULL。 */
+const s3p_state_snapshot *ble_gatt_host_snapshot(void);
 
 /* 设备→主机通知（Audio Notify / Device Event 特征）。
  * 未连接或未订阅时返回 ESP_ERR_INVALID_STATE，不静默丢弃调用。 */

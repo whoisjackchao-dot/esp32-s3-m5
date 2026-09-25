@@ -46,6 +46,7 @@ static uint8_t s_heartbeat_seq;
 static uint8_t s_state_status; /* S3P_STATUS_*：M4 STATE(0x12) 契约 v1.0 */
 static uint8_t s_state_flags;  /* S3P_FLAG_* */
 static bool s_state_valid;
+static s3p_state_snapshot s_state_snap; /* 供三页显示（S4.3）读取 */
 static ble_gatt_ctrl_cb_t s_ctrl_cb;
 static ble_gatt_disconnect_cb_t s_disconnect_cb;
 
@@ -114,6 +115,10 @@ uint8_t ble_gatt_host_status(void) {
 
 uint8_t ble_gatt_host_flags(void) {
     return s_state_valid ? s_state_flags : 0u;
+}
+
+const s3p_state_snapshot *ble_gatt_host_snapshot(void) {
+    return s_state_valid ? &s_state_snap : NULL;
 }
 
 static esp_err_t notify_value(uint16_t val_handle, bool subscribed,
@@ -196,6 +201,7 @@ static int chr_ctrl_access(uint16_t conn_handle, uint16_t attr_handle,
         }
         s_state_status = st.status;
         s_state_flags = st.flags;
+        s_state_snap = st;
         s_state_valid = true;
         ESP_LOGI(TAG, "host STATE status=%u flags=0x%02x rev=%lu tools=%u",
                  (unsigned)st.status, (unsigned)st.flags, (unsigned long)st.revision,
