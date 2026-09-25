@@ -17,3 +17,6 @@ void display_next_page(void);
 
 /* 背光通断（M4-S4.5 息屏用；BL=GPIO38） */
 void display_backlight(bool on);
+
+/* 电池电量（M4-S4.5）：由电源任务周期更新，状态页底部显示 */
+void display_set_battery(int pct, bool charging);

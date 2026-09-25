@@ -10,6 +10,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "esp_err.h"
 
@@ -23,3 +24,7 @@ esp_err_t pm1_es8311(bool on);
 
 /* L3B 供电轨（PM1 GPIO2）：LCD/麦克风/扬声器，ES8311 供电所在 */
 esp_err_t pm1_l3b_lcd(bool on);
+
+/* 电池：VBAT(reg 0x22, mV) + 百分比（官方 M5Unified 曲线）+ 充电状态(GPIO0 低=充电)。
+ * 任一 out 可传 NULL；I2C 读失败返回非 ESP_OK。 */
+esp_err_t pm1_battery(uint16_t *mv, int *pct, bool *charging);

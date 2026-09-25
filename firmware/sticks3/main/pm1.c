@@ -16,6 +16,10 @@ static const char *TAG = "pm1";
 #define PM1_REG_GPIO_OUT  0x11
 #define PM1_REG_GPIO_DRV  0x13
 #define PM1_REG_GPIO_FUNC 0x16
+#define PM1_REG_GPIO_IN   0x12
+#define PM1_REG_VBAT_L    0x22
+
+#define PM1_BIT_CHG_STAT 0x01 /* GPIO0：充电状态输入（低=充电） */
 
 #define PM1_BIT_ES8311 0x08 /* GPIO3：SPK 功放使能（官方 PinMap PYG3_SPK_Pulse） */
 #define PM1_BIT_L3B    0x04 /* GPIO2：L3B 供电轨（LCD/MIC/SPK；ES8311 所在） */
@@ -27,6 +31,8 @@ static esp_err_t pm1_write_reg(uint8_t reg, uint8_t val) {
     return i2c_master_write_to_device(I2C_NUM_0, PM1_I2C_ADDR, buf, 2,
                                       pdMS_TO_TICKS(100));
 }
+
+static esp_err_t pm1_reg_bit(uint8_t reg, uint8_t bit, bool on);
 
 esp_err_t pm1_init(void) {
     const uint8_t id_reg = PM1_REG_DEVICE_ID;
@@ -64,6 +70,9 @@ esp_err_t pm1_init(void) {
                      esp_err_to_name(on_err));
         }
     }
+    /* GPIO0（CHG_STAT）配为 GPIO 输入（M5Unified board_M5StickS3 同款） */
+    pm1_reg_bit(PM1_REG_GPIO_FUNC, PM1_BIT_CHG_STAT, false);
+    pm1_reg_bit(PM1_REG_GPIO_MODE, PM1_BIT_CHG_STAT, false);
     ESP_LOGI(TAG, "PM1 device_id=0x%02x (wdt/idle 已禁用)", dev_id);
     return err;
 }
@@ -105,4 +114,36 @@ esp_err_t pm1_es8311(bool on) {
 
 esp_err_t pm1_l3b_lcd(bool on) {
     return pm1_gpio_output(PM1_BIT_L3B, on);
+}
+
+esp_err_t pm1_battery(uint16_t *mv, int *pct, bool *charging) {
+    uint8_t buf[2] = {0};
+    const uint8_t vbat_reg = PM1_REG_VBAT_L;
+    const esp_err_t err = i2c_master_write_read_device(
+        I2C_NUM_0, PM1_I2C_ADDR, &vbat_reg, 1, buf, 2, pdMS_TO_TICKS(100));
+    if (err != ESP_OK) {
+        return err;
+    }
+    const uint16_t millivolt = (uint16_t)(buf[0] | ((uint16_t)buf[1] << 8));
+    if (mv != NULL) {
+        *mv = millivolt;
+    }
+    if (pct != NULL) {
+        int p = ((int)millivolt - 3300) * 100 / 800; /* M5Unified 官方曲线 */
+        if (p < 0) {
+            p = 0;
+        }
+        if (p > 100) {
+            p = 100;
+        }
+        *pct = p;
+    }
+    if (charging != NULL) {
+        uint8_t in = 0;
+        const uint8_t in_reg = PM1_REG_GPIO_IN;
+        *charging = (i2c_master_write_read_device(I2C_NUM_0, PM1_I2C_ADDR, &in_reg, 1, &in, 1,
+                                                  pdMS_TO_TICKS(100)) == ESP_OK) &&
+                    ((in & PM1_BIT_CHG_STAT) == 0);
+    }
+    return ESP_OK;
 }

@@ -190,6 +190,11 @@ static void u32_text(char *out, size_t cap, uint32_t v) {
     }
 }
 
+static int s_bat_pct;
+static bool s_bat_charging;
+static bool s_bat_valid;
+static volatile bool s_bat_dirty;
+
 static void render_page(int page, bool connected, bool recording) {
     const bool valid = ble_gatt_host_state_valid();
     const s3p_state_snapshot *s = ble_gatt_host_snapshot();
@@ -213,6 +218,10 @@ static void render_page(int page, bool connected, bool recording) {
         }
         if (valid && (s->flags & S3P_FLAG_EXPIRED) != 0u) {
             draw_str(100, 22, "STALE", C_YELLOW, 1);
+        }
+        if (s_bat_valid) {
+            snprintf(b, sizeof(b), "BAT %d%%%s", s_bat_pct, s_bat_charging ? " CHG" : "");
+            draw_str(4, 210, b, C_WHITE, 1);
         }
     } else if (page == 1) {
         draw_title("TASK");
@@ -259,6 +268,13 @@ void display_next_page(void) {
     s_page_next = true;
 }
 
+void display_set_battery(int pct, bool charging) {
+    s_bat_pct = pct;
+    s_bat_charging = charging;
+    s_bat_valid = true;
+    s_bat_dirty = true;
+}
+
 void display_backlight(bool on) {
     gpio_set_level(DISP_BL, on ? 1 : 0);
 }
@@ -278,10 +294,12 @@ static void display_task(void *arg) {
         const uint8_t status = ble_gatt_host_status();
         const bool key = s_page_next;
         s_page_next = false;
+        const bool bat = s_bat_dirty;
+        s_bat_dirty = false;
         if (key) {
             page = (page + 1) % 3;
         }
-        if (key || first || conn != last_conn || rec != last_rec ||
+        if (key || bat || first || conn != last_conn || rec != last_rec ||
             valid != last_valid || status != last_status) {
             render_page(page, conn, rec);
             last_conn = conn;

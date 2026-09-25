@@ -16,6 +16,7 @@
 #include "ble_gatt.h"
 #include "button.h"
 #include "display.h"
+#include "pm1.h"
 #include "s3p_state.h"
 
 static const char *TAG = "sticks3";
@@ -31,9 +32,20 @@ static void note_activity(void) {
 static void power_task(void *arg) {
     (void)arg;
     bool bl_on = true;
+    int tick = 0;
     note_activity();
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(1000));
+        if (++tick >= 10) {
+            tick = 0;
+            uint16_t mv = 0;
+            int pct = 0;
+            bool chg = false;
+            if (pm1_battery(&mv, &pct, &chg) == ESP_OK) {
+                display_set_battery(pct, chg);
+                ESP_LOGI(TAG, "battery %umV %d%% chg=%d", (unsigned)mv, pct, (int)chg);
+            }
+        }
         const TickType_t idle_for = xTaskGetTickCount() - s_last_activity;
         const bool want_on = (idle_for < pdMS_TO_TICKS(IDLE_OFF_MS)) || audio_session_active();
         if (want_on != bl_on) {
