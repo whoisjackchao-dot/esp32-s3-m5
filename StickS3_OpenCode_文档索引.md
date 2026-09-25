@@ -379,3 +379,10 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **推荐方案**：数据面**仅内存**持有（≤5min、不落盘，符合 C02/SEC-04）；控制面（IPC-02）用 **loopback HTTP**；host 形态 = **扩展 `state_host` 为常驻服务**。
 - **待批决策 D1—D5**（音频/正文仅内存 · 控制面 loopback HTTP · host 形态 · 识别重试次数 · 端点鉴权），详见草案 §4；批准后按 §5 切片实现。
 
+### 2026-09-25 工作登记（Sisyphus）——S4.7d 设计批准 + Slice 1（重试资格纯逻辑）
+
+- **设计冻结**：用户批准 **D1—D5** → [S4.7d 与 IPC-02 LLD](./StickS3_OpenCode_S4.7d与IPC-02_LLD草案.md) 转**已批准**。
+- **补充发现（LLD §7）**：现音频/追加路径由**一次性 `voice_append.exe`** 承担（退出即失）→ "内存持有音频/正文"要求**常驻 host 吸收该 voice 路径**（最大件，S4.7d 真正前置）。
+- **Slice 1 完成**：`host/src/retry_store.{h,c}`（重试资格/TTL 纯逻辑，内存态不落盘，符合 C02/SEC-04）+ 测试 `retry_store_test.c`（**13 checks / 0**）+ `build_retry_store_test.cmd`。
+- **下一步**：① 常驻 host 吸收 voice 路径 → ② 控制端点（loopback HTTP）→ ③ 托盘接线 → ④ HIL → ⑤ 证据/矩阵。
+
