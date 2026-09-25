@@ -98,7 +98,7 @@ def verify_session():
     rec_id, fc, sr, fms = sess["begin"]
     ok &= note(sr == 16000, "BEGIN sampleRate", str(sr))
     ok &= note(fms == 60, "BEGIN frameMs", str(fms))
-    ok &= note(fc == 50, "BEGIN frameCount", str(fc))
+    ok &= note(fc == 500, "BEGIN frameCount", str(fc))
     if sess["end"] is None:
         return note(False, "session", "END not received")
     rec_id_e, tf, ts, summary = sess["end"]
@@ -111,7 +111,7 @@ def verify_session():
         for seq, frags in sess["frames"].items()
     )
     ok &= note(frag_ok, "fragments complete per frame", "")
-    ok &= note(ts == 48000, "END totalSamples", str(ts))
+    ok &= note(ts == 480000, "END totalSamples", str(ts))
     ok &= note(sess["hash"] == summary, "END summary FNV-1a (independent golden check)",
                "indep={:#010x} dev={:#010x}".format(sess["hash"], summary))
     return ok
@@ -195,9 +195,9 @@ async def main():
             note(False, "control writes", "some messages not delivered")
             sys.exit(2)
 
-        # 等待设备测试录音会话完成（BEGIN → 50 AUDIO → END ≈ 3.5s）
+        # 等待设备会话完成（BEGIN → 500 AUDIO → END ≈ 30s；M2 v1.1 预告上限 500）
         try:
-            await asyncio.wait_for(end_evt.wait(), timeout=25.0)
+            await asyncio.wait_for(end_evt.wait(), timeout=40.0)
         except asyncio.TimeoutError:
             note(False, "session END", "timeout (audio_pkts={})".format(sess["audio_pkts"]))
         verify_session()
