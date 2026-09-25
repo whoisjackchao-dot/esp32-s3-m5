@@ -27,7 +27,7 @@
 | **S4.2** 主机合并状态 + BLE 下发 | 设备可见真实状态 | R17 | BLE-API-06 | T+C | ⏳ 依赖 S4.1；快照 BLE 编码需随 S4.2 冻结 |
 | **S4.3** 固件三页显示（M03） | 不切窗口看状态 | R17 | UI-02 | T+C+H | ✅ **完成**（英文三页；中文暂缓-用户裁定；真机合格） |
 | **S4.4** 短提示音（等待/错误） | 被动提醒 | R19 | ST-11 / UI-05 | T+C+H | ✅ **完成**（1kHz/150ms 默认；等待/错误各一次、录音延后、过期不响） |
-| **S4.5** USB/电池策略（M03） | 息屏保连、续航 | R20 | UI-03 / UI-04 | C+H | ✅ **息屏完成**（60s 背光关+按键/事件/录音唤醒，心跳不唤醒；真机合格）。**电量读数待查**（无明确 ADC 通路）、USB 策略待 |
+| **S4.5** USB/电池策略（M03） | 息屏保连、续航 | R20 | UI-03 / UI-04 | C+H | ✅ **息屏完成**（60s 背光关+按键/事件/录音唤醒，心跳不唤醒；真机合格）。✅ **电量读数完成**（通路＝M5PM1 `reg0x22` mV + `0x12` bit0 充电位；**三页常驻** `BAT n%`；真机串口 `battery 4200mV 100% chg=0`）。**USB 插入/拔出策略（UI-04）待做**。 |
 | **S4.6** 侧键手势（切页/长按取消） | 免看屏操作 | R17 / Q06 | UI-06 | T+C+H | ✅ **完成**（BtnB 短按切页/长按取消；阈值 **800ms**、去抖 **30ms**；真机合格） |
 | **S4.7** Windows 托盘（M07） | 配置/重试/退出 | R16 | UI-01 / UI-06 | C+H | ✅ **host 已解锁（Q6 已解除）**；启动器 LLD 待冻结 |
 
@@ -66,6 +66,13 @@
 
 - **2026-09-25（续）S4.1b 完成**（T 类，选择性 TDD）：新增 `plugin/src/core/state/store.ts`（`StateStore`：ingest→归约→持有最新快照 + 15s 过期）、`plugin/src/plugin/stateRead.ts`（TUI 状态→`SnapshotSource` 的**防御式**读取与**纯映射**）、桥接 `bridge/server.ts` 的 `/v1/state/stream` 接入可选快照提供者 + 心跳（**附加类型留在 bridge 模块，未改冻结的 `core/types.ts`**）、`index.ts` 接线。**已接线**：①用量/模型（`Session` 累计 `tokens`/`cost`/`model.id`；无则回退最近 assistant 的 `modelID` 作 lastUsed；缺失保守 unknown）；②行工具/失败数/错误码（`state.part` → tool parts 的 running/pending/error）；③**事件驱动刷新**（订阅 `session.status`/`session.idle`/`message.updated`/`permission.*`/`question.*`/`todo.updated` 等 14 类，节流 500ms；并保留 10s 心跳保活新鲜度）。证据：`bun test` **107/107**（含桥接状态流扩展 3 用例 + **入口接线集成 1 用例**：假 TUI api → `tui()` → 写 bridge.json → `/v1/state/stream` 输出归约快照）、`tsc --noEmit` **exit 0**。另：`index.ts` 的描述文件目录支持环境变量 `STICKS3_DESCRIPTOR_DIR` 覆盖（可配置/可测）。
   - **明确未交付**：①真实 TUI 运行验证（需注册插件并重启 OpenCode，属用户侧动作，与 M1 桥接注册同类）；②快照 BLE 下发（S4.2，待契约批准）；③**子任务 busy 检测（ST-12 的 `rootIdleButChildBusy`）**：TUI 状态 API 仅暴露 `get/status/todo/messages/permission/question/diff/part`，**无 children 访问器**（OC-07 无对应 TUI-API），适配层只能置 `false` —— 归约逻辑已支持并有测试，**缺口在数据源**，需另寻来源或降级承诺。
+
+- **2026-09-26 S4.3/S4.4/S4.5/S4.6 完成登记**（用户逐项真机确认合格）：
+  - **S4.3 三页显示（英文）**：`display.c` 三页 + `draw_str_px` 像素字号；命中并修复**帧缓冲字节序**缺陷（ST7789 高字节在前 → 黄↔紫、紫↔绿）；中文按用户裁定**暂缓**（界面英文）。**取消 5s 自动轮巡** → 固定首页、仅侧键切页。后续**布局校准**：全屏文本整体下移 `Y_SHIFT=8`（用户判定顶部"缺字"实为**打印外壳遮挡**）+ 页脚锚点防底部裁切 + 模拟器同步。证据：[evidence/M4/2026-09-26-S4.3-UI布局校准.md](./evidence/M4/2026-09-26-S4.3-UI布局校准.md)。
+  - **S4.4 短提示音**：I2S 全双工 TX + ES8311 播放；等待/错误各响一次、录音中延后、过期不响；默认 **1kHz 方波/150ms**；修复功放长鸣（仅提示音期间使能 + 静音尾）。真机"等待"响一声 ✅。
+  - **S4.5 息屏**：`power_task` 60s 无活动关背光（GPIO38）、BLE 保连；按键/事件/录音唤醒、**心跳不唤醒**。真机合格 ✅。
+  - **S4.6 侧键**：BtnB（GPIO12）短按(<800ms) 切页 / 长按(≥800ms) 取消；阈值 **800ms**、去抖 **30ms**。真机合格 ✅。
+  - **S4.5 电量读数 ✅（补齐"待查"）**：通路查明为 **M5PM1 I2C `0x6E` 寄存器 `0x22`（VBAT_L，2 字节小端＝mV）** + 充电位 `0x12` bit0（低有效，PM1 GPIO0 配输入）；实现 `pm1_battery()` + **三页常驻** `BAT n%`（`power_task` 10s 刷新）。真机证据：串口 `battery 4200mV 100% chg=0`（USB 满电）。**未验**：放电下降曲线、`CHG` 真机显示。**未做**：USB 插入/拔出策略（UI-04）。证据：[evidence/M4/2026-09-26-S4.5-电量读数.md](./evidence/M4/2026-09-26-S4.5-电量读数.md)。
 
 ## 7. S4.2 契约（BLE STATE 快照编码）—— ✅ **已批准 v1.0（2026-09-25）**
 
