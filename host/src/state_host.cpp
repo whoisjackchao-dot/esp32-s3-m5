@@ -4,6 +4,7 @@
 //       → BLE 写 STATE(0x12)。
 // 不写 READY、不启动录音会话；桥接/BLE 断开自动重连。
 // 测试用：环境变量 STICKS3_HOST_SECONDS=N 令其在 N 秒后自行退出。
+#include <winsock2.h>
 #include <windows.h>
 #include <winhttp.h>
 
@@ -21,6 +22,7 @@
 #include <thread>
 
 #pragma comment(lib, "winhttp.lib")
+#pragma comment(lib, "ws2_32.lib")
 
 extern "C" {
 #include "append_ctl.h"
@@ -70,6 +72,10 @@ static std::string g_bridge_url;
 static std::string g_bridge_token;
 static std::string g_epoch_name;
 static std::string g_session_id;
+static std::string g_last_text;
+static std::string g_host_token;
+static int g_host_port = 45910;
+static volatile LONG g_http_stop = 0;
 
 static void say(const char* msg) {
     std::printf("[state_host] %s\n", msg);
@@ -473,6 +479,7 @@ static void host_voice_worker(std::string cap) {
     {
         std::lock_guard<std::mutex> lk(g_voice_mu);
         sess = g_session_id;
+        g_last_text = text;
         retry_store_note(&g_retry, RETRY_FAILED, true, true, sess.c_str(), !sess.empty(),
                          GetTickCount());
     }
@@ -499,8 +506,159 @@ static void host_voice_worker(std::string cap) {
     std::remove(wav.c_str());
 }
 
+static void http_reply(SOCKET c, int code, const char* body) {
+    const char* reason = code == 200 ? "OK"
+                         : code == 202 ? "Accepted"
+                         : code == 401 ? "Unauthorized"
+                         : code == 409 ? "Conflict"
+                         : code == 502 ? "Bad Gateway"
+                                       : "Not Found";
+    char hdr[256];
+    const int n = std::snprintf(hdr, sizeof(hdr),
+                                "HTTP/1.1 %d %s\r\nContent-Type: application/json\r\n"
+                                "Content-Length: %d\r\nConnection: close\r\n\r\n",
+                                code, reason, (int)std::strlen(body));
+    (void)send(c, hdr, n, 0);
+    (void)send(c, body, (int)std::strlen(body), 0);
+}
+
+static std::string retry_status_json() {
+    std::lock_guard<std::mutex> lk(g_voice_mu);
+    const uint32_t now = GetTickCount();
+    char b[256];
+    std::snprintf(b, sizeof(b),
+                  "{\"canRecognize\":%s,\"canAppend\":%s,\"hasAudio\":%s,\"hasText\":%s,"
+                  "\"status\":%d}",
+                  retry_can_recognize(&g_retry, now) ? "true" : "false",
+                  retry_can_append(&g_retry, now) ? "true" : "false",
+                  g_held_len > 12 ? "true" : "false", g_last_text.empty() ? "false" : "true",
+                  (int)g_retry.rec.status);
+    return b;
+}
+
+static bool bearer_ok(const char* req) {
+    const char* p = std::strstr(req, "Authorization: Bearer ");
+    if (p == nullptr) return false;
+    p += std::strlen("Authorization: Bearer ");
+    const char* e = std::strstr(p, "\r\n");
+    const size_t n = e ? (size_t)(e - p) : std::strlen(p);
+    return g_host_token.size() == n && std::memcmp(p, g_host_token.data(), n) == 0;
+}
+
+static void http_handle_conn(SOCKET c) {
+    char buf[4096];
+    const int n = recv(c, buf, (int)sizeof(buf) - 1, 0);
+    if (n <= 0) return;
+    buf[n] = '\0';
+    char method[8] = {0}, path[128] = {0};
+    if (sscanf(buf, "%7s %127s", method, path) != 2) return;
+    if (!bearer_ok(buf)) {
+        http_reply(c, 401, "{\"error\":\"unauthorized\"}");
+        return;
+    }
+    if (std::strcmp(method, "GET") == 0 && std::strcmp(path, "/v1/retry/status") == 0) {
+        const std::string b = retry_status_json();
+        http_reply(c, 200, b.c_str());
+        return;
+    }
+    if (std::strcmp(method, "POST") == 0 && std::strcmp(path, "/v1/retry/recognize") == 0) {
+        bool ok = false;
+        {
+            std::lock_guard<std::mutex> lk(g_voice_mu);
+            ok = retry_can_recognize(&g_retry, GetTickCount()) && g_held_len > 12;
+        }
+        if (!ok) {
+            http_reply(c, 409, "{\"error\":\"not_eligible\"}");
+            return;
+        }
+        std::string cap;
+        {
+            std::lock_guard<std::mutex> lk(g_voice_mu);
+            cap.assign((const char*)g_held, g_held_len);
+        }
+        std::thread(host_voice_worker, cap).detach();
+        http_reply(c, 202, "{\"status\":\"accepted\"}");
+        return;
+    }
+    if (std::strcmp(method, "POST") == 0 && std::strcmp(path, "/v1/retry/append") == 0) {
+        std::string text, sess, url, token, epoch;
+        {
+            std::lock_guard<std::mutex> lk(g_voice_mu);
+            if (!retry_can_append(&g_retry, GetTickCount()) || g_last_text.empty()) {
+                http_reply(c, 409, "{\"error\":\"not_eligible\"}");
+                return;
+            }
+            text = g_last_text;
+            sess = g_session_id;
+            url = g_bridge_url;
+            token = g_bridge_token;
+            epoch = g_epoch_name;
+        }
+        const std::string opid = rand_op_id();
+        char jb[16384];
+        const size_t jl = append_build_request(epoch.c_str(), sess.c_str(), opid.c_str(),
+                                               text.c_str(), jb, sizeof(jb));
+        unsigned long sc = 0;
+        std::string rb;
+        if (jl == 0 || !append_post(url, token, std::string(jb, jl), sc, rb)) {
+            http_reply(c, 502, "{\"error\":\"append_failed\"}");
+            return;
+        }
+        const append_outcome oc = append_classify((int)sc, rb.data(), rb.size());
+        {
+            std::lock_guard<std::mutex> lk(g_voice_mu);
+            const retry_status rs = oc == APPEND_APPLIED     ? RETRY_APPLIED
+                                    : oc == APPEND_UNCERTAIN ? RETRY_UNCERTAIN
+                                                             : RETRY_REJECTED;
+            retry_store_note(&g_retry, rs, true, true, sess.c_str(), !sess.empty(), GetTickCount());
+        }
+        char out[128];
+        std::snprintf(out, sizeof(out), "{\"outcome\":%d,\"http\":%lu}", (int)oc, sc);
+        http_reply(c, 200, out);
+        return;
+    }
+    http_reply(c, 404, "{\"error\":\"not_found\"}");
+}
+
+static void http_thread() {
+    WSADATA w;
+    if (WSAStartup(MAKEWORD(2, 2), &w) != 0) return;
+    SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (s == INVALID_SOCKET) {
+        WSACleanup();
+        return;
+    }
+    sockaddr_in a{};
+    a.sin_family = AF_INET;
+    a.sin_port = htons((u_short)g_host_port);
+    a.sin_addr.s_addr = inet_addr("127.0.0.1");
+    if (bind(s, (sockaddr*)&a, sizeof(a)) != 0 || listen(s, 4) != 0) {
+        closesocket(s);
+        WSACleanup();
+        say("control endpoint bind failed");
+        return;
+    }
+    std::printf("[state_host] control endpoint on 127.0.0.1:%d\n", g_host_port);
+    std::fflush(stdout);
+    while (InterlockedCompareExchange(&g_http_stop, 0, 0) == 0) {
+        SOCKET c = accept(s, nullptr, nullptr);
+        if (c == INVALID_SOCKET) break;
+        http_handle_conn(c);
+        closesocket(c);
+    }
+    closesocket(s);
+    WSACleanup();
+}
+
 static int run_host() {
     retry_store_init(&g_retry);
+    {
+        const char* tk = std::getenv("STICKS3_HOST_TOKEN");
+        g_host_token = (tk && *tk) ? tk : "sticks3-host";
+        const char* hp = std::getenv("STICKS3_HOST_PORT");
+        if (hp && std::atoi(hp) > 0) g_host_port = std::atoi(hp);
+        std::thread(http_thread).detach();
+    }
     const char* sec = std::getenv("STICKS3_HOST_SECONDS");
     const DWORD deadline = (sec && std::atoi(sec) > 0) ? (GetTickCount() + (DWORD)std::atoi(sec) * 1000u) : 0;
 
