@@ -21,6 +21,8 @@
 #pragma comment(lib, "winhttp.lib")
 
 extern "C" {
+#include "s3p_proto.h"
+#include "s3p_reasm.h"
 #include "s3p_state.h"
 #include "state_merge.h"
 }
@@ -36,9 +38,24 @@ using namespace Windows::Storage::Streams;
 
 static const wchar_t* SVC_STR = L"{22587f80-334a-53d6-beb8-8a6ace31af07}";
 static const wchar_t* CTRL_STR = L"{14be07f7-5cd5-5d0d-b56c-ecbbc6b162c0}";
+static const wchar_t* AUDIO_STR = L"{54d5e361-d549-55cc-ab98-66ebc8afe4f3}";
+static const wchar_t* EVENT_STR = L"{a1d7042f-43a0-53b5-ad2f-a1b3ae57c79c}";
 
 static uint32_t g_last_rev = 0;
 static uint32_t g_pushes = 0;
+
+static GattCharacteristic g_audio{nullptr};
+static GattCharacteristic g_event{nullptr};
+static s3p_reasm_t* g_reasm = nullptr;
+static uint8_t g_reasm_buf[256 * 1024];
+static uint8_t g_fb[512];
+static HANDLE g_end_evt = nullptr;
+static uint32_t g_last_rec = 0;
+static uint32_t g_last_frames = 0;
+static uint32_t g_last_samples = 0;
+static uint32_t g_last_summary = 0;
+static int g_last_end_rc = -1;
+static bool g_session_captured = false;
 
 static void say(const char* msg) {
     std::printf("[state_host] %s\n", msg);
@@ -101,7 +118,83 @@ static uint64_t parse_addr_from_id(const winrt::hstring& id) {
     return n == 12 ? addr : 0;
 }
 
-static bool connect_ctrl(GattCharacteristic& out) {
+static void on_audio(GattCharacteristic const&, GattValueChangedEventArgs const& args) {
+    auto buf = args.CharacteristicValue();
+    const uint8_t* p = buf.data();
+    const uint32_t n = buf.Length();
+    if (!g_reasm || n < 2 || p[1] != S3P_PROTOCOL_VERSION) return;
+    switch (p[0]) {
+    case S3P_PKT_BEGIN:
+        if (n >= S3P_BEGIN_LEN) {
+            const uint32_t rec = s3p_get_u32(p + 2);
+            const uint16_t fc = s3p_get_u16(p + 6);
+            const uint16_t sr = s3p_get_u16(p + 8);
+            if (s3p_reasm_begin(g_reasm, rec, fc, sr) == S3P_REASM_OK) {
+                g_last_rec = rec;
+                std::printf("[state_host] session BEGIN rec=%lu frames=%u\n", (unsigned long)rec, (unsigned)fc);
+                std::fflush(stdout);
+            }
+        }
+        break;
+    case S3P_PKT_AUDIO:
+        if (n >= S3P_AUDIO_HDR_LEN) {
+            s3p_reasm_feed(g_reasm, s3p_get_u32(p + 2), s3p_get_u32(p + 6), p[10], p[11],
+                           p + S3P_AUDIO_HDR_LEN, (uint16_t)(n - S3P_AUDIO_HDR_LEN));
+        }
+        break;
+    case S3P_PKT_END:
+        if (n >= S3P_END_LEN) {
+            g_last_frames = s3p_get_u32(p + 6);
+            g_last_samples = s3p_get_u32(p + 10);
+            g_last_summary = s3p_get_u32(p + 14);
+            g_last_end_rc = (int)s3p_reasm_end(g_reasm, s3p_get_u32(p + 2), g_last_frames,
+                                               g_last_samples, g_last_summary);
+            g_session_captured = true;
+            const char* capdir = std::getenv("STICKS3_CAPTURE_DIR");
+            std::printf("[state_host] session END frames=%lu samples=%lu rc=%d\n",
+                        (unsigned long)g_last_frames, (unsigned long)g_last_samples, g_last_end_rc);
+            std::fflush(stdout);
+            if (capdir) {
+                char path[300];
+                std::snprintf(path, sizeof(path), "%s\\rec_%lu.s3pcap", capdir, (unsigned long)g_last_rec);
+                FILE* f = std::fopen(path, "wb");
+                if (f) {
+                    const uint32_t magic = 0x4F503353; /* "S3PO" */
+                    std::fwrite(&magic, 4, 1, f);
+                    std::fwrite(&g_last_rec, 4, 1, f);
+                    std::fwrite(&g_last_frames, 4, 1, f);
+                    for (uint32_t s = 0; s < g_last_frames; ++s) {
+                        const size_t l = s3p_reasm_read_frame(g_reasm, s, g_fb, sizeof(g_fb));
+                        const uint16_t l16 = (uint16_t)l;
+                        std::fwrite(&s, 4, 1, f);
+                        std::fwrite(&l16, 2, 1, f);
+                        if (l) std::fwrite(g_fb, 1, l, f);
+                    }
+                    std::fclose(f);
+                    std::printf("[state_host] captured -> %s\n", path);
+                    std::fflush(stdout);
+                }
+            }
+            if (g_end_evt) SetEvent(g_end_evt);
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+static void on_event(GattCharacteristic const&, GattValueChangedEventArgs const& args) {
+    auto buf = args.CharacteristicValue();
+    const uint8_t* p = buf.data();
+    const uint32_t n = buf.Length();
+    if (n >= 2 && (p[0] == S3P_PKT_ERROR || p[0] == S3P_PKT_DEVICE_CANCEL)) {
+        std::printf("[state_host] device event type=0x%02x\n", (unsigned)p[0]);
+        std::fflush(stdout);
+    }
+}
+
+static bool connect_chars(GattCharacteristic& out_ctrl, GattCharacteristic& out_audio,
+                          GattCharacteristic& out_event) {
     const winrt::guid svcGuid(SVC_STR);
     auto devs = DeviceInformation::FindAllAsync(GattDeviceService::GetDeviceSelectorFromUuid(svcGuid)).get();
     if (devs.Size() == 0) return false;
@@ -137,14 +230,18 @@ static bool connect_ctrl(GattCharacteristic& out) {
         return false;
     };
     if (!try_disc(BluetoothCacheMode::Uncached) && !try_disc(BluetoothCacheMode::Cached)) return false;
-    const winrt::guid ctrlGuid(CTRL_STR);
-    auto cr = svc.GetCharacteristicsForUuidAsync(ctrlGuid, BluetoothCacheMode::Uncached).get();
-    if (cr.Status() != GattCommunicationStatus::Success || cr.Characteristics().Size() == 0) {
-        cr = svc.GetCharacteristicsForUuidAsync(ctrlGuid, BluetoothCacheMode::Cached).get();
-    }
-    if (cr.Status() != GattCommunicationStatus::Success || cr.Characteristics().Size() == 0) return false;
-    out = cr.Characteristics().GetAt(0);
-    return true;
+    auto get_char = [&](const wchar_t* guidStr, GattCharacteristic& out) -> bool {
+        const winrt::guid guid(guidStr);
+        auto r = svc.GetCharacteristicsForUuidAsync(guid, BluetoothCacheMode::Uncached).get();
+        if (r.Status() != GattCommunicationStatus::Success || r.Characteristics().Size() == 0) {
+            r = svc.GetCharacteristicsForUuidAsync(guid, BluetoothCacheMode::Cached).get();
+        }
+        if (r.Status() != GattCommunicationStatus::Success || r.Characteristics().Size() == 0) return false;
+        out = r.Characteristics().GetAt(0);
+        return true;
+    };
+    return get_char(CTRL_STR, out_ctrl) && get_char(AUDIO_STR, out_audio) &&
+           get_char(EVENT_STR, out_event);
 }
 
 static bool push_state(GattCharacteristic& ctrl, const br03_snapshot& in) {
@@ -192,8 +289,24 @@ static int run_host() {
         }
         if (!ctrl) {
             try {
-                if (!connect_ctrl(ctrl)) {
+                if (!connect_chars(ctrl, g_audio, g_event)) {
                     say("ble connect failed; retry");
+                    Sleep(2000);
+                    continue;
+                }
+                if (!g_reasm) g_reasm = s3p_reasm_create(g_reasm_buf, sizeof(g_reasm_buf));
+                if (!g_end_evt) g_end_evt = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+                g_audio.ValueChanged({on_audio});
+                g_event.ValueChanged({on_event});
+                auto s1 = g_audio.WriteClientCharacteristicConfigurationDescriptorAsync(
+                              GattClientCharacteristicConfigurationDescriptorValue::Notify)
+                              .get();
+                auto s2 = g_event.WriteClientCharacteristicConfigurationDescriptorAsync(
+                              GattClientCharacteristicConfigurationDescriptorValue::Notify)
+                              .get();
+                if (s1 != GattCommunicationStatus::Success || s2 != GattCommunicationStatus::Success) {
+                    say("ble subscribe failed; retry");
+                    ctrl = nullptr;
                     Sleep(2000);
                     continue;
                 }
@@ -202,7 +315,15 @@ static int run_host() {
                 Sleep(2000);
                 continue;
             }
-            say("ble connected (CTRL characteristic)");
+            say("ble connected + subscribed (CTRL/AUDIO/EVENT)");
+            if (std::getenv("STICKS3_HOST_TRIGGER")) {
+                const uint8_t rd[4] = {0x10, 1, 0xF7, 0x00};
+                Buffer wb(4);
+                wb.Length(4);
+                std::memcpy(wb.data(), rd, 4);
+                (void)ctrl.WriteValueAsync(wb, GattWriteOption::WriteWithResponse).get();
+                say("triggered READY (test mode)");
+            }
         }
 
         say("subscribe /v1/state/stream");
