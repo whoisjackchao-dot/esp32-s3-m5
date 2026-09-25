@@ -156,3 +156,4 @@
 - **吸收进展①（2026-09-25 续）**：常驻 `state_host` 已具备 **BLE 音频/事件接收 + 会话重组 + s3pcap 落盘**（订阅 `CTRL/AUDIO/EVENT`；`s3p_reasm`；`STICKS3_CAPTURE_DIR`；`STICKS3_HOST_TRIGGER` 仅供测试触发）。HIL：触发会话 → `BEGIN/END rec=1 frames=500 samples=480000 rc=0` → `rec_1.s3pcap`（75,332 B）；**STATE 推送无回归**（连续 rev 递增）。
 - **吸收进展②-a（2026-09-25 续）数据面**：会话音频**内存持有**（`g_held`，s3pcap 字节；**不落盘**，符合 D1/C02/SEC-04）+ `retry_store` 资格接线。HIL：END 后 `retry: audio held (75,479 B) can_recognize=1`。host 产出的 s3pcap 经既有 `decode_capture.py` **解码兼容**（500 帧 → 30.00s）。
 - **仍未吸收**：**ASR / `draft.append`**（含 Opus 解码编排；仓库无 C/C++ Opus 解码器，暂用 PyAV helper 子进程——登记偏差）。
+- **吸收进展②-b（2026-09-25 续）**：抽出 `append_ctl.{h,c}`（`draft.append` 请求构造 + 结果分类，纯逻辑；`append_ctl_test` **14/0**），`voice_append.exe` 已**收敛复用**（去重复实现；重建 BUILD_OK）。供 host 吸收 append 时直接调用。
