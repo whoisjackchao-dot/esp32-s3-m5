@@ -1,4 +1,4 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["/mnt/c/Temp/ESP32-S3M5/plugin/spike/spike-plugin.ts"]
+  "plugin": ["/mnt/c/Users/home/esp32-s3-m5/plugin/spike/spike-plugin.ts"]
 }
