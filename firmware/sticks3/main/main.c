@@ -151,6 +151,11 @@ void app_main(void) {
     } else {
         ESP_LOGE(TAG, "display init FAILED");
     }
+
+    /* S4.4 自检：开机响一声（后续按等待/错误事件触发，每事件一次） */
+    if (audio_capture_beep() != ESP_OK) {
+        ESP_LOGW(TAG, "提示音自检失败（I2S TX / es8311）");
+    }
     ESP_LOGI(TAG, "free heap        : %lu", (unsigned long)esp_get_free_heap_size());
 
     /* 诊断心跳：USB-Serial-JTAG 在正常 boot 时重新枚举，启动日志在主机接入前丢失；

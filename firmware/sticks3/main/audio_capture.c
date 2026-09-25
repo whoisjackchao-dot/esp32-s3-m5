@@ -18,6 +18,7 @@ static const char *TAG = "audio_capture";
 #define AUDIO_I2S_BCLK GPIO_NUM_17
 #define AUDIO_I2S_WS GPIO_NUM_15
 #define AUDIO_I2S_DIN GPIO_NUM_16
+#define AUDIO_I2S_DOUT GPIO_NUM_14
 #define AUDIO_SAMPLE_RATE 16000
 /* MCLK 倍数：codec 与 I2S 必须一致。2026-09-23 时基排查候选 A（256→384）：
  * 实测：候选 A(384) 仍不符（比值 2.56→2.00），coeff 表假设与实际不符；
@@ -26,6 +27,8 @@ static const char *TAG = "audio_capture";
 #define AUDIO_ES8311_ADDR ES8311_ADDRESS_0 /* 0x18：CE 拉低 */
 
 static i2s_chan_handle_t s_rx_chan;
+static i2s_chan_handle_t s_tx_chan;
+static es8311_handle_t s_codec;
 
 bool audio_capture_ready(void) {
     return s_rx_chan != NULL;
@@ -141,11 +144,12 @@ esp_err_t audio_capture_init(void) {
         return ESP_FAIL;
     }
     ESP_LOGI(TAG, "es8311 ready (16kHz/16bit)");
+    s_codec = codec;
 
     i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     chan_cfg.dma_desc_num = 6;
     chan_cfg.dma_frame_num = 240;
-    err = i2s_new_channel(&chan_cfg, NULL, &s_rx_chan);
+    err = i2s_new_channel(&chan_cfg, &s_tx_chan, &s_rx_chan);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "i2s new channel: %s", esp_err_to_name(err));
         return err;
@@ -160,7 +164,7 @@ esp_err_t audio_capture_init(void) {
             .mclk = AUDIO_I2S_MCLK,
             .bclk = AUDIO_I2S_BCLK,
             .ws = AUDIO_I2S_WS,
-            .dout = I2S_GPIO_UNUSED,
+            .dout = AUDIO_I2S_DOUT,
             .din = AUDIO_I2S_DIN,
             .invert_flags = {false, false, false},
         },
@@ -175,6 +179,21 @@ esp_err_t audio_capture_init(void) {
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "i2s enable: %s", esp_err_to_name(err));
         return err;
+    }
+    err = i2s_channel_init_std_mode(s_tx_chan, &std_cfg);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "i2s tx std init: %s", esp_err_to_name(err));
+        return err;
+    }
+    err = i2s_channel_enable(s_tx_chan);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "i2s tx enable: %s", esp_err_to_name(err));
+        return err;
+    }
+    if (s_codec != NULL) {
+        int vol = 0;
+        es8311_voice_volume_set(s_codec, 70, &vol);
+        es8311_voice_mute(s_codec, false);
     }
     ESP_LOGI(TAG, "i2s rx running (MCLK%lu BCLK%lu WS%lu DIN%lu)",
              (unsigned long)AUDIO_I2S_MCLK, (unsigned long)AUDIO_I2S_BCLK,
@@ -227,4 +246,41 @@ esp_err_t audio_capture_read(int16_t *samples, size_t count, size_t *read_out) {
     }
     if (read_out) *read_out = frames;
     return err;
+}
+
+esp_err_t audio_capture_play(const int16_t *mono, size_t samples) {
+    if (s_tx_chan == NULL || mono == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    static int16_t stereo[2 * 960];
+    size_t done = 0;
+    while (done < samples) {
+        size_t n = samples - done;
+        if (n > 960) {
+            n = 960;
+        }
+        for (size_t i = 0; i < n; ++i) {
+            stereo[2 * i] = mono[done + i];
+            stereo[2 * i + 1] = mono[done + i];
+        }
+        size_t written = 0;
+        const esp_err_t err = i2s_channel_write(s_tx_chan, stereo, n * 2 * sizeof(int16_t),
+                                                &written, pdMS_TO_TICKS(1000));
+        if (err != ESP_OK) {
+            return err;
+        }
+        done += n;
+    }
+    return ESP_OK;
+}
+
+esp_err_t audio_capture_beep(void) {
+    static int16_t tone[2400]; /* 150ms @16kHz */
+    const size_t n = sizeof(tone) / sizeof(tone[0]);
+    for (size_t i = 0; i < n; ++i) {
+        /* 1kHz 方波：每 8 个样本翻转（16kHz/1000/2 = 8） */
+        tone[i] = ((i / (AUDIO_SAMPLE_RATE / 1000 / 2)) % 2u == 0) ? (int16_t)10000
+                                                                  : (int16_t)-10000;
+    }
+    return audio_capture_play(tone, n);
 }

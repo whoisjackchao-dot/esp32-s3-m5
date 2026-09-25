@@ -23,3 +23,9 @@ bool audio_capture_ready(void);
 
 /* 阻塞读取一帧采样（16bit PCM，samples 个样本）。read_out 返回实际样本数。 */
 esp_err_t audio_capture_read(int16_t *samples, size_t count, size_t *read_out);
+
+/* 播放单声道 PCM（内部转立体声写入 I2S TX）。M4/S4.4 提示音用。 */
+esp_err_t audio_capture_play(const int16_t *mono, size_t samples);
+
+/* 播放一声短提示音（1kHz / 150ms）。 */
+esp_err_t audio_capture_beep(void);
