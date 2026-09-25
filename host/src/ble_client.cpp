@@ -9,11 +9,13 @@
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Devices.Bluetooth.h>
 #include <winrt/Windows.Devices.Bluetooth.GenericAttributeProfile.h>
+#include <winrt/Windows.Data.Json.h>
 #include <winrt/Windows.Devices.Enumeration.h>
 #include <winrt/Windows.Storage.Streams.h>
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <mutex>
 #include <string>
 
@@ -24,6 +26,8 @@
 extern "C" {
 #include "s3p_proto.h"
 #include "s3p_reasm.h"
+#include "s3p_state.h"
+#include "state_merge.h"
 }
 
 using namespace winrt;
@@ -49,6 +53,7 @@ static struct {
 } g_end;
 static unsigned g_audio_pkts = 0;
 static bool g_session_started = false;
+static uint32_t g_state_revision = 0;
 static GattDeviceService g_svc{nullptr};
 
 static uint32_t fnv_update(uint32_t h, const uint8_t* d, size_t n) {
@@ -117,6 +122,174 @@ static bool read_bridge_binding(bool* busy) {
     }
     WinHttpCloseHandle(req);
     WinHttpCloseHandle(conn);
+    WinHttpCloseHandle(ses);
+    return ok;
+}
+
+/* M4/S4.2：BR-03 快照（SSE）→ br03_snapshot。用 Windows.Data.Json 解析。 */
+static uint8_t status_from_string(const std::wstring& s) {
+    if (s == L"idle") return S3P_STATUS_IDLE;
+    if (s == L"busy") return S3P_STATUS_BUSY;
+    if (s == L"retry") return S3P_STATUS_RETRY;
+    if (s == L"waiting") return S3P_STATUS_WAITING;
+    if (s == L"error") return S3P_STATUS_ERROR;
+    return S3P_STATUS_UNKNOWN;
+}
+
+static std::string narrow(const std::wstring& w) {
+    std::string s;
+    s.reserve(w.size());
+    for (wchar_t c : w) {
+        s.push_back(c >= 0 && c < 128 ? static_cast<char>(c) : '?');
+    }
+    return s;
+}
+
+static uint32_t avail_number(const winrt::Windows::Data::Json::JsonObject& parent, const wchar_t* key,
+                             uint32_t missing) {
+    using namespace winrt::Windows::Data::Json;
+    if (!parent.HasKey(key)) return missing;
+    const JsonObject a = parent.GetNamedObject(key);
+    const std::wstring kind = a.HasKey(L"kind") ? std::wstring(a.GetNamedString(L"kind")) : L"";
+    if (kind == L"known" && a.HasKey(L"value")) return (uint32_t)a.GetNamedNumber(L"value");
+    if (kind == L"not_reported") return S3P_STATE_NOT_REPORTED;
+    return missing;
+}
+
+static std::string avail_string(const winrt::Windows::Data::Json::JsonObject& parent, const wchar_t* key,
+                                bool* has) {
+    using namespace winrt::Windows::Data::Json;
+    *has = false;
+    if (!parent.HasKey(key)) return {};
+    const JsonObject a = parent.GetNamedObject(key);
+    const std::wstring kind = a.HasKey(L"kind") ? std::wstring(a.GetNamedString(L"kind")) : L"";
+    if (kind == L"known" && a.HasKey(L"value")) {
+        *has = true;
+        return narrow(std::wstring(a.GetNamedString(L"value")));
+    }
+    return {};
+}
+
+/* GET /v1/state/stream（SSE）；取首个 data: 的 JSON，解析为 br03_snapshot。 */
+static bool read_bridge_snapshot(br03_snapshot* out) {
+    using namespace winrt::Windows::Data::Json;
+    const char* url = std::getenv("STICKS3_BRIDGE_URL");
+    const char* token = std::getenv("STICKS3_BRIDGE_TOKEN");
+    if (!url || !token) return false;
+    const std::string u(url);
+    if (u.compare(0, 7, "http://") != 0) return false;
+    const std::string rest = u.substr(7);
+    const auto colon = rest.find(':');
+    if (colon == std::string::npos) return false;
+    const std::string host = rest.substr(0, colon);
+    const int port = std::atoi(rest.substr(colon + 1).c_str());
+    if ((host != "127.0.0.1" && host != "localhost") || port <= 0 || port > 65535) return false;
+    const std::wstring whost(host.begin(), host.end());
+
+    HINTERNET ses = WinHttpOpen(L"sticks3-ble/0.1", WINHTTP_ACCESS_TYPE_NO_PROXY, nullptr, nullptr, 0);
+    if (!ses) return false;
+    HINTERNET conn = WinHttpConnect(ses, whost.c_str(), (INTERNET_PORT)port, 0);
+    bool ok = false;
+    if (conn) {
+        HINTERNET req = WinHttpOpenRequest(conn, L"GET", L"/v1/state/stream", nullptr, WINHTTP_NO_REFERER,
+                                           WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+        if (req) {
+            const std::wstring headers = L"Authorization: Bearer " +
+                                         std::wstring(token, token + std::char_traits<char>::length(token));
+            if (WinHttpSendRequest(req, headers.c_str(), (DWORD)headers.size(), WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
+                WinHttpReceiveResponse(req, nullptr)) {
+                std::string body;
+                for (int i = 0; i < 60 && body.find("data: ") == std::string::npos; ++i) {
+                    DWORD avail = 0;
+                    if (!WinHttpQueryDataAvailable(req, &avail) || avail == 0) {
+                        Sleep(50);
+                        continue;
+                    }
+                    std::string chunk(avail, '\0');
+                    DWORD rd = 0;
+                    if (!WinHttpReadData(req, chunk.data(), avail, &rd)) break;
+                    body.append(chunk, 0, rd);
+                    if (body.size() > 8192) break;
+                }
+                const size_t k = body.find("data: ");
+                if (k != std::string::npos) {
+                    size_t e = body.find('\n', k);
+                    if (e == std::string::npos) e = body.size();
+                    std::string js = body.substr(k + 6, e - (k + 6));
+                    while (!js.empty() && (js.back() == '\r' || js.back() == '\n' || js.back() == ' ')) js.pop_back();
+                    try {
+                        const JsonObject o = JsonObject::Parse(std::wstring(js.begin(), js.end()));
+                        br03_snapshot b;
+                        memset(&b, 0, sizeof(b));
+                        b.tokens_input = S3P_STATE_UNKNOWN;
+                        b.tokens_output = S3P_STATE_UNKNOWN;
+                        b.cost_milli = S3P_STATE_UNKNOWN;
+                        if (o.HasKey(L"status")) {
+                            b.status = status_from_string(std::wstring(o.GetNamedString(L"status")));
+                        }
+                        if (o.HasKey(L"identity")) {
+                            const JsonObject id = o.GetNamedObject(L"identity");
+                            if (id.HasKey(L"snapshotRevision")) {
+                                b.revision = (uint32_t)id.GetNamedNumber(L"snapshotRevision");
+                            }
+                        }
+                        if (o.HasKey(L"bind")) {
+                            const JsonObject bd = o.GetNamedObject(L"bind");
+                            if (bd.HasKey(L"canAppend")) b.can_append = bd.GetNamedBoolean(L"canAppend") ? 1 : 0;
+                        }
+                        if (o.HasKey(L"freshness")) {
+                            const JsonObject fr = o.GetNamedObject(L"freshness");
+                            if (fr.HasKey(L"authoritativeReadOk")) {
+                                b.expired = fr.GetNamedBoolean(L"authoritativeReadOk") ? 0 : 1;
+                            }
+                        }
+                        if (o.HasKey(L"subtaskHint") &&
+                            o.GetNamedValue(L"subtaskHint").ValueType() == JsonValueType::String) {
+                            const std::wstring h(o.GetNamedString(L"subtaskHint"));
+                            if (h == L"tool_failed") {
+                                b.tool_failed = 1;
+                            } else if (h == L"child_busy") {
+                                b.child_busy = 1;
+                            }
+                        }
+                        if (o.HasKey(L"todos")) {
+                            const JsonObject td = o.GetNamedObject(L"todos");
+                            const std::wstring kind = td.HasKey(L"kind") ? std::wstring(td.GetNamedString(L"kind")) : L"";
+                            if (kind == L"known" && td.HasKey(L"value")) {
+                                const JsonObject v = td.GetNamedObject(L"value");
+                                b.todo_known = 1;
+                                b.todo_completed = (uint8_t)v.GetNamedNumber(L"completed");
+                                b.todo_total = (uint8_t)v.GetNamedNumber(L"total");
+                            }
+                        }
+                        if (o.HasKey(L"usage")) {
+                            const JsonObject us = o.GetNamedObject(L"usage");
+                            b.tokens_input = avail_number(us, L"input", S3P_STATE_UNKNOWN);
+                            b.tokens_output = avail_number(us, L"output", S3P_STATE_UNKNOWN);
+                        }
+                        b.cost_milli = avail_number(o, L"cost", S3P_STATE_UNKNOWN);
+                        static std::string s_project, s_title, s_model;
+                        bool hp = false, ht = false, hm = false;
+                        s_project = avail_string(o, L"project", &hp);
+                        s_title = avail_string(o, L"sessionTitle", &ht);
+                        if (o.HasKey(L"model")) {
+                            const JsonObject md = o.GetNamedObject(L"model");
+                            s_model = avail_string(md, L"current", &hm);
+                        }
+                        b.project = hp ? s_project.c_str() : nullptr;
+                        b.title = ht ? s_title.c_str() : nullptr;
+                        b.model = hm ? s_model.c_str() : nullptr;
+                        *out = b;
+                        ok = true;
+                    } catch (...) {
+                        ok = false;
+                    }
+                }
+            }
+            WinHttpCloseHandle(req);
+        }
+        WinHttpCloseHandle(conn);
+    }
     WinHttpCloseHandle(ses);
     return ok;
 }
@@ -337,25 +510,37 @@ static int run() {
     }
     std::printf("[PASS] write READY | 1001f700\n");
 
-    /* M2 纵切：读 M1 桥接真实状态 → STATE(0x12) 下发；桥接未运行 → valid=0
-     * （设备如实显示 UNKNOWN，不用假状态冒充集成） */
+    /* M4 S4.2：读 M1 桥接真实状态 → 合并为 STATE 契约 v1.0 载荷下发；
+     * 桥接未运行 → status=UNKNOWN（设备如实显示，不用假状态冒充集成）。 */
     {
-        bool busy = false;
-        const bool valid = read_bridge_binding(&busy);
-        const uint8_t bitmap = (uint8_t)(valid ? (0x02 | (busy ? 0x01 : 0x00)) : 0x00);
-        Buffer sb(4);
-        sb.Length(4);
-        uint8_t* sd = sb.data();
-        sd[0] = 0x12;
-        sd[1] = S3P_PROTOCOL_VERSION;
-        sd[2] = 1; /* snapshot version */
-        sd[3] = bitmap;
+        br03_snapshot in{};
+        const bool have_snap = read_bridge_snapshot(&in);
+        if (!have_snap) {
+            /* 桥接不可用 → 回退 binding 派生的最小快照（status 仅 IDLE/BUSY/UNKNOWN）。 */
+            bool busy = false;
+            const bool valid = read_bridge_binding(&busy);
+            in.status = valid ? (busy ? S3P_STATUS_BUSY : S3P_STATUS_IDLE) : S3P_STATUS_UNKNOWN;
+            in.can_append = valid ? 1 : 0;
+            in.expired = valid ? 0 : 1;
+        }
+        in.revision = ++g_state_revision;
+        s3p_state_snapshot snap;
+        state_merge(&snap, &in);
+        uint8_t sd[S3P_STATE_MAX_LEN];
+        const size_t slen = s3p_state_encode(&snap, sd, sizeof(sd));
+        if (slen == 0) {
+            return fail("write STATE", "encode failed");
+        }
+        Buffer sb((uint32_t)slen);
+        sb.Length((uint32_t)slen);
+        std::memcpy(sb.data(), sd, slen);
         const auto sres = ctrlChar.WriteValueAsync(sb, GattWriteOption::WriteWithResponse).get();
         if (sres != GattCommunicationStatus::Success) {
             return fail("write STATE", "GATT status != Success");
         }
-        std::printf("[PASS] write STATE | bitmap=0x%02x (%s)\n", bitmap,
-                    valid ? (busy ? "BUSY from bridge" : "IDLE from bridge") : "bridge absent -> UNKNOWN");
+        std::printf("[PASS] write STATE | src=%s status=%u flags=0x%02x rev=%lu len=%u\n",
+                    have_snap ? "snapshot" : "binding-fallback", (unsigned)snap.status,
+                    (unsigned)snap.flags, (unsigned long)snap.revision, (unsigned)slen);
     }
 
     /* 满载会话（TX-02）：500 帧 × 60ms ≈ 31s，45s 超时留余量 */
