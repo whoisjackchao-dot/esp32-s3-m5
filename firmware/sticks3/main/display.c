@@ -253,6 +253,12 @@ static void render_page(int page, bool connected, bool recording) {
     draw_str(DISP_W - 24, DISP_H - 12, b, C_WHITE, 1);
 }
 
+static volatile bool s_page_next;
+
+void display_next_page(void) {
+    s_page_next = true;
+}
+
 static void display_task(void *arg) {
     (void)arg;
     bool last_conn = false;
@@ -268,13 +274,15 @@ static void display_task(void *arg) {
         const bool valid = ble_gatt_host_state_valid();
         const uint8_t status = ble_gatt_host_status();
         const TickType_t now = xTaskGetTickCount();
+        const bool key = s_page_next;
+        s_page_next = false;
         const bool rotate = (now - last_rotate) >= pdMS_TO_TICKS(5000);
-        if (rotate) {
+        if (key || rotate) {
             page = (page + 1) % 3;
             last_rotate = now;
         }
-        if (rotate || first || conn != last_conn || rec != last_rec || valid != last_valid ||
-            status != last_status) {
+        if (key || rotate || first || conn != last_conn || rec != last_rec ||
+            valid != last_valid || status != last_status) {
             render_page(page, conn, rec);
             last_conn = conn;
             last_rec = rec;

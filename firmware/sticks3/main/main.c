@@ -28,6 +28,14 @@ static void on_button_release(void) {
     audio_session_request_stop();
 }
 
+static void on_side_short(void) {
+    display_next_page();
+}
+
+static void on_side_long(void) {
+    audio_session_abort();
+}
+
 static int proto_selftest(void) {
     uint8_t buf[S3P_END_LEN] = {0};
     uint8_t payload[8] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'};
@@ -170,6 +178,7 @@ void app_main(void) {
         ESP_LOGE(TAG, "button init FAILED");
     }
 
+    button_set_side_handlers(on_side_short, on_side_long);
     if (ble_gatt_init() == ESP_OK) {
         ble_gatt_set_ctrl_cb(audio_session_on_ctrl);
         ble_gatt_set_disconnect_cb(audio_session_abort);

@@ -9,3 +9,6 @@
 #include "esp_err.h"
 
 esp_err_t display_init(void);
+
+/* 请求切到下一页（M4-S4.6 侧键短按用；由显示任务在下次轮询处理） */
+void display_next_page(void);

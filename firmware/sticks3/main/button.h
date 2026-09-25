@@ -18,3 +18,6 @@ bool button_is_pressed(void);
 
 /* 注册按下/松开回调（在 button_init 之后、按键任务运行前设置） */
 void button_set_handlers(button_event_cb_t on_press, button_event_cb_t on_release);
+
+/* 注册侧键 BtnB 回调：短按切页 / 长按取消（阈值 800ms、去抖 30ms，用户 2026-09-26 批准） */
+void button_set_side_handlers(button_event_cb_t on_short, button_event_cb_t on_long);
