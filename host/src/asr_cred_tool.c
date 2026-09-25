@@ -32,6 +32,7 @@ static int read_hidden(char *buf, size_t cap) {
 }
 
 int main(int argc, char **argv) {
+    SetConsoleOutputCP(CP_UTF8);
     if (argc < 2) {
         printf("usage: asr_cred_tool.exe store|show|delete\n");
         return 2;
