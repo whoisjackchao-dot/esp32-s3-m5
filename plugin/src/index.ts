@@ -134,7 +134,7 @@ const plugin: TuiPluginModule = {
                       : "not_visible";
                 const { reads, ok } = readTuiState(api, session);
                 revision += 1;
-                store.ingest(
+                const outcome = store.ingest(
                     buildSnapshotSource({
                         epoch: tuiEpoch,
                         revision,
@@ -147,6 +147,9 @@ const plugin: TuiPluginModule = {
                     }),
                     now,
                 );
+                if (outcome.kind === "applied") {
+                    bridge.broadcast();
+                }
             } catch {
                 /* 无伤插入：状态读取/归约的任何异常都不得冒泡到 OpenCode 的事件总线或定时器。 */
             }

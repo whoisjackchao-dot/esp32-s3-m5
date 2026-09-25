@@ -17,6 +17,17 @@ export interface BridgeStateOptions {
 
 export type BridgeOptions = BridgeServerOptions & { readonly state?: BridgeStateOptions };
 
+/** 在冻结的 BridgeServer 之上附加事件驱动广播（不改 core/types.ts 的冻结契约）。 */
+export interface BridgeServerHandle extends BridgeServer {
+    /** 把当前快照立即推给所有 SSE 订阅者（否则仅靠 10s 心跳，延迟 ≤10s）。 */
+    broadcast(): void;
+}
+
+/** Bun per-request idle 超时控制（SSE 静默期不得计入默认 10s idle 超时）。 */
+interface IdleControl {
+    timeout(req: Request, seconds: number): void;
+}
+
 const DEFAULT_HEARTBEAT_MS = 10_000;
 
 /** 响应体全部由本模块构造，故仅以 unknown 承载并统一序列化 */
@@ -71,7 +82,7 @@ function appendResponseBody(req: AppendRequest, outcome: AppendOutcome): unknown
     };
 }
 
-export function startBridge(options: BridgeOptions): BridgeServer {
+export function startBridge(options: BridgeOptions): BridgeServerHandle {
     const streams = new Set<ReadableStreamDefaultController<Uint8Array>>();
     const encoder = new TextEncoder();
     let stopped = false;
@@ -81,7 +92,7 @@ export function startBridge(options: BridgeOptions): BridgeServer {
         return `event: snapshot\ndata: ${JSON.stringify(payload)}\n\n`;
     };
 
-    async function handle(req: Request, boundPort: number): Promise<Response> {
+    async function handle(req: Request, boundPort: number, srv: IdleControl): Promise<Response> {
         // §2 检查顺序：认证(401) → Origin(403) → Host(403)，均先于路由与载荷校验
         if (req.headers.get("authorization") !== `Bearer ${options.token}`) {
             return jsonResponse(401, errorBody("unauthorized"));
@@ -169,6 +180,7 @@ export function startBridge(options: BridgeOptions): BridgeServer {
 
         if (path === "/v1/state/stream") {
             if (method !== "GET") return jsonResponse(405, errorBody("method_not_allowed"));
+            srv.timeout(req, 0);  // SSE 静默期不得计入 idle（Bun 默认 10s 会切断长连）
             let controllerRef: ReadableStreamDefaultController<Uint8Array> | undefined;
             const stream = new ReadableStream<Uint8Array>({
                 start(controller) {
@@ -195,9 +207,21 @@ export function startBridge(options: BridgeOptions): BridgeServer {
     const server: Bun.Server<never> = Bun.serve({
         hostname: "127.0.0.1",
         port: boundPort,
-        fetch: (req): Promise<Response> => handle(req, boundPort),
+        fetch: (req, srv): Promise<Response> => handle(req, boundPort, srv),
     });
     boundPort = server.port ?? boundPort;
+
+    const broadcast = (): void => {
+        if (stopped) return;
+        const frame = encoder.encode(snapshotEvent());
+        for (const controller of streams) {
+            try {
+                controller.enqueue(frame);
+            } catch (error) {
+                void error;
+            }
+        }
+    };
 
     let heartbeat: ReturnType<typeof setInterval> | undefined;
     if (options.state) {
@@ -215,6 +239,7 @@ export function startBridge(options: BridgeOptions): BridgeServer {
     return {
         port: boundPort,
         hostname: "127.0.0.1",
+        broadcast,
         stop() {
             if (stopped) return;
             stopped = true;

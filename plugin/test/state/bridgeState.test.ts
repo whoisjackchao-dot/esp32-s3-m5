@@ -2,11 +2,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
 import { startBridge } from "../../src/bridge/server";
+import type { BridgeServerHandle } from "../../src/bridge/server";
 import type {
     AppendOutcome,
     AppendRequest,
     BindingTarget,
-    BridgeServer,
     CancelOutcome,
     QueryOutcome,
 } from "../../src/core/types";
@@ -55,9 +55,9 @@ interface StateOption {
     heartbeatMs?: number;
 }
 
-const liveServers: BridgeServer[] = [];
+const liveServers: BridgeServerHandle[] = [];
 
-function start(state?: StateOption): BridgeServer {
+function start(state?: StateOption): BridgeServerHandle {
     const server = startBridge({
         token: TOKEN,
         tuiEpoch: EPOCH,
@@ -122,4 +122,64 @@ describe("M4 桥接状态流扩展", () => {
         expect(text).toContain("event: snapshot");
         expect(text).toContain("null");
     });
+
+    // 心跳 10s，故本测试须在默认 5s 超时内收到 broadcast 才有意义（证明“立即”而非靠心跳）。
+    test("broadcast() 立即推送新快照（不等心跳）", async () => {
+        let rev = 1;
+        const withRev = (): StatusSnapshot => {
+            const base = snapshot();
+            return { ...base, identity: { ...base.identity, snapshotRevision: rev } };
+        };
+        const server = start({ snapshot: withRev, heartbeatMs: 10_000 });
+        const res = await fetch(`http://127.0.0.1:${server.port}/v1/state/stream`, {
+            headers: { authorization: `Bearer ${TOKEN}` },
+        });
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error("no body");
+        const decoder = new TextDecoder();
+        let collected = "";
+        while (!collected.includes('"snapshotRevision":1')) {
+            const chunk = await reader.read();
+            if (chunk.done) break;
+            collected += decoder.decode(chunk.value, { stream: true });
+        }
+        expect(collected).toContain('"snapshotRevision":1');
+        rev = 2;
+        server.broadcast();
+        while (!collected.includes('"snapshotRevision":2')) {
+            const chunk = await reader.read();
+            if (chunk.done) break;
+            collected += decoder.decode(chunk.value, { stream: true });
+        }
+        expect(collected).toContain('"snapshotRevision":2');
+        await reader.cancel();
+    });
+
+    // 慢测（约 22s）：Bun 默认 idleTimeout=10s 会在 ~16-20s 切断静默 SSE；须 opt-in。
+    test.skipIf(!process.env.BRIDGE_LONG_TEST)(
+        "SSE 长连不被 Bun 默认 10s idle 切断（BRIDGE_LONG_TEST=1）",
+        async () => {
+            const server = start({ snapshot: () => snapshot(), heartbeatMs: 10_000 });
+            const res = await fetch(`http://127.0.0.1:${server.port}/v1/state/stream`, {
+                headers: { authorization: `Bearer ${TOKEN}` },
+            });
+            const reader = res.body?.getReader();
+            if (!reader) throw new Error("no body");
+            const startMs = Date.now();
+            let closed = false;
+            while (Date.now() - startMs < 22_000) {
+                const raced = await Promise.race([
+                    reader.read(),
+                    new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000)),
+                ]);
+                if (raced && raced.done) {
+                    closed = true;
+                    break;
+                }
+            }
+            expect(closed).toBe(false);
+            await reader.cancel();
+        },
+        30_000,
+    );
 });
