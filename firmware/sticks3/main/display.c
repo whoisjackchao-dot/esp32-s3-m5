@@ -174,7 +174,7 @@ static void draw_title(const char *t) {
     const int gap = (n > 1 && span > 0) ? span / (n - 1) : 0;
     int x = 2;
     for (const char *p = t; *p != '\0'; ++p) {
-        draw_char8(x, 2, *p, C_PURPLE, 2);
+        draw_char8(x, 8, *p, C_PURPLE, 2);
         x += glyph + gap;
     }
 }
@@ -217,7 +217,7 @@ static void render_page(int page, bool connected, bool recording) {
             draw_str(4, 186, "REC", C_RED, 2);
         }
         if (valid && (s->flags & S3P_FLAG_EXPIRED) != 0u) {
-            draw_str(100, 22, "STALE", C_YELLOW, 1);
+            draw_str(100, 26, "STALE", C_YELLOW, 1);
         }
     } else if (page == 1) {
         draw_title("TASK");
