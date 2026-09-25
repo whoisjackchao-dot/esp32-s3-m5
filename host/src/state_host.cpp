@@ -27,6 +27,7 @@
 extern "C" {
 #include "append_ctl.h"
 #include "asr_adapter.h"
+#include "asr_credential.h"
 #include "asr_transport.h"
 #include "retry_store.h"
 #include "s3p_proto.h"
@@ -421,13 +422,24 @@ static void host_voice_worker(std::string cap) {
     }
     std::printf("[state_host] voice: decoded -> wav\n");
     std::fflush(stdout);
-    const char* key = std::getenv("STICKS3_ASR_KEY");
-    if (key == nullptr || *key == '\0') {
-        say("voice: ASR skipped (no STICKS3_ASR_KEY)");
+    std::string keybuf;
+    const char* envkey = std::getenv("STICKS3_ASR_KEY");
+    if (envkey != nullptr && *envkey != '\0') {
+        keybuf = envkey;
+    } else {
+        char cred[512];
+        if (asr_cred_load(cred, sizeof(cred)) == ASR_CRED_OK) {
+            keybuf = cred;
+            SecureZeroMemory(cred, sizeof(cred));
+        }
+    }
+    if (keybuf.empty()) {
+        say("voice: ASR skipped (no key: env/cred)");
         std::remove(s3p.c_str());
         std::remove(wav.c_str());
         return;
     }
+    const char* key = keybuf.c_str();
     std::string wavb;
     if (!read_file(wav, wavb) || wavb.empty()) {
         say("voice: wav read failed");
@@ -502,6 +514,7 @@ static void host_voice_worker(std::string cap) {
         say("voice: append post failed");
     }
     std::fflush(stdout);
+    SecureZeroMemory(&keybuf[0], keybuf.size());
     std::remove(s3p.c_str());
     std::remove(wav.c_str());
 }
