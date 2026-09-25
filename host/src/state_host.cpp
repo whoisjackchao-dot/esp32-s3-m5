@@ -510,6 +510,9 @@ static void host_voice_worker(std::string cap) {
                                                          : RETRY_REJECTED;
         retry_store_note(&g_retry, rs, true, true, sess.c_str(), !sess.empty(), GetTickCount());
         std::printf("[state_host] voice: append outcome=%d http=%lu\n", (int)oc, sc);
+        if (oc != APPEND_APPLIED) {
+            std::printf("[state_host] voice: append resp=%s\n", rb.substr(0, 200).c_str());
+        }
     } else {
         say("voice: append post failed");
     }
