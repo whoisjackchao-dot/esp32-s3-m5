@@ -158,3 +158,4 @@
 - **仍未吸收**：**ASR / `draft.append`**（含 Opus 解码编排；仓库无 C/C++ Opus 解码器，暂用 PyAV helper 子进程——登记偏差）。
 - **吸收进展②-b（2026-09-25 续）**：抽出 `append_ctl.{h,c}`（`draft.append` 请求构造 + 结果分类，纯逻辑；`append_ctl_test` **14/0**），`voice_append.exe` 已**收敛复用**（去重复实现；重建 BUILD_OK）。供 host 吸收 append 时直接调用。
 - **吸收进展②-c（2026-09-25 续）**：常驻 host 编排 **解码（PyAV helper 子进程）+ ASR（`asr_adapter`/`asr_transport`）+ `draft.append`（`append_ctl`）→ `retry_store` 状态迁移**（`STICKS3_HOST_VOICE=1` 启用；worker 线程避免阻塞 BLE 回调；session/epoch 取自 SSE 快照与 bridge.json）。HIL：`voice: decoded -> wav` + `ASR skipped (no key)`（门控生效）、临时文件已清、STATE 无回归。**待控场 HIL**：带 ASR key 的真实 ASR+append（会写入当前会话草稿 + 云端调用，需另行确认时机）。
+- **#2 控制端点（IPC-02）完成（2026-09-25 续）**：常驻 host 起 **loopback HTTP**（`127.0.0.1:${STICKS3_HOST_PORT:-45910}`，Bearer `${STICKS3_HOST_TOKEN:-sticks3-host}`），暴露 `GET /v1/retry/status`、`POST /v1/retry/{recognize,append}`。curl 验证：status JSON（`canRecognize/canAppend/hasAudio/hasText/status`）、无鉴权 **401**、未就绪 **409 not_eligible**。
