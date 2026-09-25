@@ -7,6 +7,18 @@ import type {
 } from "../core/types";
 import { BODY_MAX_BYTES, PROTOCOL_VERSION } from "../core/types";
 
+import type { StatusSnapshot } from "../core/state/types";
+
+/** M4：状态流扩展（附加类型在 bridge 模块内定义，不改冻结的 core/types.ts） */
+export interface BridgeStateOptions {
+    readonly snapshot: () => StatusSnapshot | null;
+    readonly heartbeatMs?: number;
+}
+
+export type BridgeOptions = BridgeServerOptions & { readonly state?: BridgeStateOptions };
+
+const DEFAULT_HEARTBEAT_MS = 10_000;
+
 /** 响应体全部由本模块构造，故仅以 unknown 承载并统一序列化 */
 function jsonResponse(status: number, body: unknown): Response {
     return new Response(JSON.stringify(body), {
@@ -59,9 +71,15 @@ function appendResponseBody(req: AppendRequest, outcome: AppendOutcome): unknown
     };
 }
 
-export function startBridge(options: BridgeServerOptions): BridgeServer {
+export function startBridge(options: BridgeOptions): BridgeServer {
     const streams = new Set<ReadableStreamDefaultController<Uint8Array>>();
+    const encoder = new TextEncoder();
     let stopped = false;
+
+    const snapshotEvent = (): string => {
+        const payload = options.state ? (options.state.snapshot() ?? null) : options.handlers.binding();
+        return `event: snapshot\ndata: ${JSON.stringify(payload)}\n\n`;
+    };
 
     async function handle(req: Request, boundPort: number): Promise<Response> {
         // §2 检查顺序：认证(401) → Origin(403) → Host(403)，均先于路由与载荷校验
@@ -151,17 +169,14 @@ export function startBridge(options: BridgeServerOptions): BridgeServer {
 
         if (path === "/v1/state/stream") {
             if (method !== "GET") return jsonResponse(405, errorBody("method_not_allowed"));
-            const encoder = new TextEncoder();
             let controllerRef: ReadableStreamDefaultController<Uint8Array> | undefined;
             const stream = new ReadableStream<Uint8Array>({
                 start(controller) {
                     controllerRef = controller;
                     streams.add(controller);
-                    // M1 最小实现：连接注释 + 一次完整快照；心跳/增量归 M4
+                    // 连接注释必须先于首个事件（BR-03：: connected 先于 event: snapshot）
                     controller.enqueue(encoder.encode(": connected\n\n"));
-                    controller.enqueue(
-                        encoder.encode(`event: snapshot\ndata: ${JSON.stringify(options.handlers.binding())}\n\n`),
-                    );
+                    controller.enqueue(encoder.encode(snapshotEvent()));
                 },
                 cancel() {
                     if (controllerRef) streams.delete(controllerRef);
@@ -184,6 +199,19 @@ export function startBridge(options: BridgeServerOptions): BridgeServer {
     });
     boundPort = server.port ?? boundPort;
 
+    let heartbeat: ReturnType<typeof setInterval> | undefined;
+    if (options.state) {
+        heartbeat = setInterval(() => {
+            for (const controller of streams) {
+                try {
+                    controller.enqueue(encoder.encode(snapshotEvent()));
+                } catch (error) {
+                    void error;
+                }
+            }
+        }, options.state.heartbeatMs ?? DEFAULT_HEARTBEAT_MS);
+    }
+
     return {
         port: boundPort,
         hostname: "127.0.0.1",
@@ -199,6 +227,7 @@ export function startBridge(options: BridgeServerOptions): BridgeServer {
                 }
             }
             streams.clear();
+            if (heartbeat) clearInterval(heartbeat);
             server.stop();
             if (closeErrors.length > 0) {
                 // 已断开流重复关闭属预期竞态；仅计数，不外泄任何内容

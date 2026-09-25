@@ -1,9 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { TuiPluginModule } from "@opencode-ai/plugin/tui";
+import type { TuiPluginApi, TuiPluginModule } from "@opencode-ai/plugin/tui";
 
 import { createCoordinator } from "./core/coordinator";
+import { StateStore } from "./core/state/store";
 import type {
     AppendOutcome,
     AppendRequest,
@@ -16,10 +17,36 @@ import type {
 import { RefStore, currentSessionID, registerSlotPlugin } from "./plugin/capture";
 import { buildCommitFn } from "./plugin/safeAppend";
 import { buildSessionPromptSlot } from "./plugin/slotPrompt";
+import { buildSnapshotSource, readTuiState } from "./plugin/stateRead";
 import { startBridge } from "./bridge/server";
 
 const PLUGIN_VERSION = "0.1.0";
-const DESCRIPTOR_DIR = join(homedir(), ".local/share/sticks3-opencode");
+const HEARTBEAT_MS = 10_000;
+const REFRESH_MIN_MS = 500;
+
+const STATE_EVENT_TYPES = [
+    "session.status",
+    "session.idle",
+    "session.updated",
+    "session.error",
+    "message.updated",
+    "message.part.updated",
+    "message.part.removed",
+    "message.removed",
+    "permission.asked",
+    "permission.replied",
+    "question.asked",
+    "question.replied",
+    "question.rejected",
+    "todo.updated",
+] as const;
+
+function registerStateEvents(api: TuiPluginApi, onEvent: () => void): Array<() => void> {
+    const register = api.event.on as unknown as (type: string, handler: () => void) => () => void;
+    return STATE_EVENT_TYPES.map((type) => register(type, onEvent));
+}
+const DESCRIPTOR_DIR =
+    process.env.STICKS3_DESCRIPTOR_DIR ?? join(homedir(), ".local/share/sticks3-opencode");
 const DESCRIPTOR_FILE = join(DESCRIPTOR_DIR, "bridge.json");
 
 function randomToken(): string {
@@ -88,7 +115,73 @@ const plugin: TuiPluginModule = {
             binding,
         };
 
-        const bridge = startBridge({ token, tuiEpoch, pluginVersion: PLUGIN_VERSION, handlers });
+        const store = new StateStore();
+        let revision = 0;
+
+        function refreshState(): void {
+            try {
+                const session = currentSessionID(api.route.current);
+                if (!session) return;
+                const now = Date.now();
+                const target = binding();
+                const canAppend = target.promptVisible && !target.promptDisabled && !target.dialogBlocking;
+                const blockReason = target.dialogBlocking
+                    ? "dialog_blocking"
+                    : target.promptVisible
+                      ? target.promptDisabled
+                          ? "disabled"
+                          : null
+                      : "not_visible";
+                const { reads, ok } = readTuiState(api, session);
+                revision += 1;
+                store.ingest(
+                    buildSnapshotSource({
+                        epoch: tuiEpoch,
+                        revision,
+                        sessionID: session,
+                        canAppend,
+                        blockReason,
+                        reads,
+                        nowMs: now,
+                        authoritativeReadOk: ok,
+                    }),
+                    now,
+                );
+            } catch {
+                /* 无伤插入：状态读取/归约的任何异常都不得冒泡到 OpenCode 的事件总线或定时器。 */
+            }
+        }
+
+        let lastRefreshMs = 0;
+        let pendingRefresh: ReturnType<typeof setTimeout> | undefined;
+        function scheduleRefresh(): void {
+            const now = Date.now();
+            const elapsed = now - lastRefreshMs;
+            if (elapsed >= REFRESH_MIN_MS) {
+                lastRefreshMs = now;
+                refreshState();
+                return;
+            }
+            if (pendingRefresh === undefined) {
+                pendingRefresh = setTimeout(() => {
+                    pendingRefresh = undefined;
+                    lastRefreshMs = Date.now();
+                    refreshState();
+                }, REFRESH_MIN_MS - elapsed);
+            }
+        }
+
+        const bridge = startBridge({
+            token,
+            tuiEpoch,
+            pluginVersion: PLUGIN_VERSION,
+            handlers,
+            state: { snapshot: () => store.current() ?? null, heartbeatMs: HEARTBEAT_MS },
+        });
+        refreshState();
+        lastRefreshMs = Date.now();
+        const stateTimer = setInterval(refreshState, HEARTBEAT_MS);
+        const eventUnsubscribers = registerStateEvents(api, scheduleRefresh);
 
         try {
             mkdirSync(DESCRIPTOR_DIR, { recursive: true, mode: 0o700 });
@@ -109,6 +202,9 @@ const plugin: TuiPluginModule = {
         }
 
         api.lifecycle.onDispose(() => {
+            clearInterval(stateTimer);
+            if (pendingRefresh !== undefined) clearTimeout(pendingRefresh);
+            for (const unsubscribe of eventUnsubscribers) unsubscribe();
             bridge.stop();
             refs.clear();
         });
