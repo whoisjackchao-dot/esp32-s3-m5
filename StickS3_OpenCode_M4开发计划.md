@@ -79,7 +79,8 @@
 > - ✅ 固件重建 **734,368 B**（分区余量 30%）；`flash-artifacts` 已更新（sha `d17a63a1…`）。
 > - ✅ **host 发送端（经 `ble_client` 验证）+ 设备端到端 PASS**：`ble_client.cpp` 已升级为经 `state_merge` + `s3p_state_encode` 下发 **v1.0 STATE**；固件已**刷入**（734,368 B）。实测：`ble_client` 写 `status=0 flags=0x02 rev=1 len=23` → 设备串口回显 `host STATE status=0 flags=0x02 rev=1 tools=0`；会话 500 帧 + FNV 一致（`ble_client PASS`）。
 >   - ✅ **验证增量 PASS（2026-09-25 续，用户裁定）**：`ble_client` 状态源已为 **`GET /v1/state/stream` 真实快照**（`read_bridge_snapshot`，binding 仅作回退）。端到端复跑证据：`src=snapshot status=2 flags=0x39 rev=1 len=71` → 设备串口回显 `host STATE status=2 flags=0x39 rev=1`；会话 500 帧 + FNV 一致（`ble_client PASS`）。**更正**：本行旧述"状态源为桥接 binding"**已过时**（代码早已实现 snapshot 源，本次实测证实）。
->   - **仍未交付**：**常驻/托盘形态的生产 host**（持续订阅 + 重连 + 长时会话稳定性）——本次按用户选择只做**验证增量**，不锁定进程形态。
+>   - ✅ **生产 host 交付（2026-09-25 续）**：新增常驻 `host/src/state_host.exe`——读 `bridge.json` → 连 `StickS3` BLE（CTRL）→ 订阅 `/v1/state/stream` → **按 `snapshotRevision` 去重** → `state_merge`+`s3p_state_encode` → 持续写 `STATE(0x12)`；桥接/BLE 断开**自动重连**；**不写 READY、不开录音会话**。配套：SSE 帧解析纯件 `sse_parse.h`（7 用例 TDD）、共享映射 `bridge_snapshot.h`（`ble_client` 已收敛复用）、`state_merge` 文本 **UTF-8 码点安全截断**（修中文截断缺陷）。HIL：60s 内连续 **7 次**下发（rev 804→817），设备串口逐条回显一致（`status=2 flags=0x39`）。证据：[evidence/M4/2026-09-25-S4.2-生产host.md](./evidence/M4/2026-09-25-S4.2-生产host.md)。
+>   - **仍未交付**：Windows 服务（SCM）/托盘内嵌包装（host 需手动或启动器拉起）；S4.7d（重试入口，待 IPC-02）；（可选）插件侧事件即时推送以降低 >10s 延迟。
 > - ✅ **命中并修复真实缺陷（S4.2 e2e 暴露）**：富 TLV 快照（len=66）被设备以 **ATT error 13** 拒绝——根因 `chr_ctrl_access` 仅把**前 8 字节**拷入 `buf[8]`，却把 `om_len` 传给解码器 → **越界读栈垃圾** → 解码失败。**修复**：按整包拷贝（≤`S3P_STATE_MAX_LEN`）+ 超长拒绝。重刷后设备回显 `host STATE status=0 flags=0x3e rev=1 tools=2`（与发送一致），`ble_client PASS`（sha `0d8e8de4…`）。
 >   - **⚠ 教训**：先前 23 字节的"PASS"实为**栈上巧合（UB）**，非真验证；只有≥8 字节边界以上的用例才能暴露它。
 >

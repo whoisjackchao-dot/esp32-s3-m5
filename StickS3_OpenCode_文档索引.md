@@ -351,3 +351,13 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **仍未交付**：**常驻/托盘形态的生产 host**（持续订阅 + 重连 + 长时会话稳定性）；S4.7d（待 host 常驻服务 + IPC-02）。
 - **证据**：[evidence/M4/2026-09-25-S4.2-snapshot源端到端.md](./evidence/M4/2026-09-25-S4.2-snapshot源端到端.md)。
 
+### 2026-09-25 工作登记（Sisyphus）——S4.2 生产 host 交付（常驻，SSE→BLE 持续 STATE）
+
+**范围**：交付 **S4.2 生产 host**（独立常驻 `state_host.exe`，即 M4 §8/§9 所指 host 常驻服务）；`voicePhase` 维持 v1.0 不加。
+
+- **新增**：`host/src/state_host.cpp`（读 `bridge.json` → 连 BLE CTRL 特征 → 订阅 `/v1/state/stream` → **按 `snapshotRevision` 去重** → `state_merge`+`s3p_state_encode` → 持续写 `STATE(0x12)`；桥接/BLE 断开**自动重连**；**不写 READY、不开录音会话**）+ `build_state_host.cmd`；SSE 纯解析件 `sse_parse.h`（**7 用例 TDD，先 RED 后 GREEN**）；共享映射 `bridge_snapshot.h`（`ble_client` 已收敛复用，去重复实现）。
+- **命中并修复真实缺陷（T 类）**：①`state_merge.copy_text` 按字节截断可能切断中文字符 → 改 **UTF-8 码点安全**（+回归；`state_merge_test` **21/0**）；②`ble_client` 原 `narrow()` 把非 ASCII 降级为 `'?'`（中文标题变问号）→ 共享映射改 UTF-8。
+- **HIL 端到端 PASS（2026-09-25）**：`state_host` 60s 内**连续 7 次**下发（`rev 804→817`，`status=2 flags=0x39 len=71`），设备串口**逐条回显一致**；`ble_client` 重构后复跑**无回归**（`src=snapshot … len=71`）。
+- **效力边界**：观察到 **SSE 约每 ~20s 自动重订阅**（host 能恢复，根因未定位）；桥接仅在 **10s 心跳**重发快照 → 设备更新延迟 **≤~10s**（更低需插件改事件即时推送）；未做 Windows 服务/托盘包装与长时稳定性。
+- **证据**：[evidence/M4/2026-09-25-S4.2-生产host.md](./evidence/M4/2026-09-25-S4.2-生产host.md)。
+
