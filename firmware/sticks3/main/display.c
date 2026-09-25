@@ -130,9 +130,10 @@ static const char *status_text(uint8_t status) {
 }
 
 /* 三页显示（M4/S4.3，英文界面）：状态 / 任务 / 用量；5s 自动翻页（切页归 S4.6 侧键）。 */
-static void draw_kv(int y, const char *k, const char *v) {
-    draw_str(4, y, k, C_YELLOW, 1);
-    draw_str(4 + (int)(strlen(k) + 1) * 8, y, v, C_WHITE, 1);
+/* 字段：标签 8px（黄）+ 值 16px（白），标签固定占 6 字符宽。 */
+static void draw_field(int y, const char *label, const char *value) {
+    draw_str(4, y + 5, label, C_YELLOW, 1);
+    draw_str(4 + 6 * 8, y, value, C_WHITE, 2);
 }
 
 /* 用量三态：未知 "?" / 未报告 "-" / 具体值（不伪装 0，ST-08）。 */
@@ -151,42 +152,45 @@ static void render_page(int page, bool connected, bool recording) {
     const s3p_state_snapshot *s = ble_gatt_host_snapshot();
     char b[40];
     fill(C_BLACK);
-    draw_str(4, 4, "STICKS3", C_WHITE, 2);
+    draw_str(4, 2, "STICKS3", C_YELLOW, 1);
     if (page == 0) {
-        draw_str(4, 40, connected ? "BLE:CONN" : "BLE:ADV", C_WHITE, 1);
-        draw_str(4, 54, valid ? "HOST:OK" : "HOST:--", C_WHITE, 1);
-        if (valid && (s->flags & S3P_FLAG_EXPIRED) != 0u) {
-            draw_str(96, 54, "STALE", C_YELLOW, 1);
-        }
-        draw_str(4, 80, valid ? status_text(s->status) : "NO STATE", C_WHITE, 2);
+        draw_str(4, 20, "STATUS", C_WHITE, 2);
+        draw_str(4, 52, connected ? "BLE CONN" : "BLE ADV", C_WHITE, 2);
+        draw_str(4, 76, valid ? "HOST OK" : "HOST --", C_WHITE, 2);
+        const char *t = valid ? status_text(s->status) : "NO STATE";
+        const int len = (int)strlen(t);
+        draw_str(4, 108, t, C_WHITE, (len <= 5) ? 3 : 2);
         if (recording) {
-            draw_str(4, 120, "REC", C_WHITE, 2);
+            draw_str(4, 156, "REC", C_RED, 3);
+        }
+        if (valid && (s->flags & S3P_FLAG_EXPIRED) != 0u) {
+            draw_str(96, 22, "STALE", C_YELLOW, 1);
         }
     } else if (page == 1) {
-        draw_str(4, 4, "TASK", C_WHITE, 2);
-        draw_kv(40, "P:", (valid && s->project[0] != '\0') ? s->project : "-");
-        draw_kv(54, "T:", (valid && s->title[0] != '\0') ? s->title : "-");
+        draw_str(4, 20, "TASK", C_WHITE, 2);
+        draw_field(52, "PROJ", (valid && s->project[0] != '\0') ? s->project : "-");
+        draw_field(80, "TITLE", (valid && s->title[0] != '\0') ? s->title : "-");
         if (valid) {
             snprintf(b, sizeof(b), "%u", (unsigned)s->tool_count);
         } else {
             snprintf(b, sizeof(b), "-");
         }
-        draw_kv(68, "TOOLS:", b);
+        draw_field(108, "TOOL", b);
         if (valid) {
             snprintf(b, sizeof(b), "%u/%u", (unsigned)s->todo_completed,
                      (unsigned)s->todo_total);
         } else {
             snprintf(b, sizeof(b), "-");
         }
-        draw_kv(82, "TODO:", b);
+        draw_field(136, "TODO", b);
     } else {
-        draw_str(4, 4, "USAGE", C_WHITE, 2);
+        draw_str(4, 20, "USAGE", C_WHITE, 2);
         u32_text(b, sizeof(b), valid ? s->tokens_input : S3P_STATE_UNKNOWN);
-        draw_kv(40, "IN:", b);
+        draw_field(52, "IN", b);
         u32_text(b, sizeof(b), valid ? s->tokens_output : S3P_STATE_UNKNOWN);
-        draw_kv(54, "OUT:", b);
+        draw_field(80, "OUT", b);
         u32_text(b, sizeof(b), valid ? s->cost_milli : S3P_STATE_UNKNOWN);
-        draw_kv(68, "COSTm:", b);
+        draw_field(108, "COST", b);
     }
     snprintf(b, sizeof(b), "%d/3", page + 1);
     draw_str(DISP_W - 24, DISP_H - 14, b, C_WHITE, 1);
