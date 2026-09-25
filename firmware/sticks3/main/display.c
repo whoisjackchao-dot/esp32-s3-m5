@@ -48,6 +48,7 @@ static inline uint16_t pxswap(uint16_t c) {
 #define C_BLACK  0x0000
 #define C_PURPLE 0xCA9F /* 淡紫 #CC99FF */
 #define C_BLUE3399 0x327F /* #3399FF */
+#define Y_SHIFT 8          /* 打印外壳遮挡顶部 → 全部文本整体下移 */
 #define C_WHITE  0xFFFF
 #define C_RED    0xF800
 #define C_GREEN  0x07E0
@@ -62,6 +63,7 @@ static void draw_char8(int x, int y, char c, uint16_t color, int scale) {
     if (idx >= 128u) {
         return;
     }
+    y += Y_SHIFT;
     for (int row = 0; row < 8; ++row) {
         const uint8_t bits = (uint8_t)font8x8_basic[idx][row];
         for (int col = 0; col < 8; ++col) {
@@ -94,6 +96,7 @@ static void draw_char_px(int x, int y, char c, uint16_t color, int size) {
     if (o >= 128u) {
         return;
     }
+    y += Y_SHIFT;
     for (int row = 0; row < size; ++row) {
         const uint8_t bits = (uint8_t)font8x8_basic[o][row * 8 / size];
         for (int col = 0; col < size; ++col) {
@@ -174,7 +177,7 @@ static void draw_title(const char *t) {
     const int gap = (n > 1 && span > 0) ? span / (n - 1) : 0;
     int x = 2;
     for (const char *p = t; *p != '\0'; ++p) {
-        draw_char8(x, 8, *p, C_PURPLE, 2);
+        draw_char8(x, 2, *p, C_PURPLE, 2);
         x += glyph + gap;
     }
 }
@@ -217,7 +220,7 @@ static void render_page(int page, bool connected, bool recording) {
             draw_str(4, 186, "REC", C_RED, 2);
         }
         if (valid && (s->flags & S3P_FLAG_EXPIRED) != 0u) {
-            draw_str(100, 26, "STALE", C_YELLOW, 1);
+            draw_str(100, 22, "STALE", C_YELLOW, 1);
         }
     } else if (page == 1) {
         draw_title("TASK");
@@ -258,7 +261,7 @@ static void render_page(int page, bool connected, bool recording) {
     if (s_bat_valid) {
         draw_str(4, 204, "BAT", C_BLUE3399, 2);
         snprintf(b, sizeof(b), "%d%%%s", s_bat_pct, s_bat_charging ? " CHG" : "");
-        draw_str(4 + 3 * 16, 208, b, C_BLUE3399, 1);
+        draw_str(4 + 3 * 16, 208, b, C_WHITE, 1);
     }
     snprintf(b, sizeof(b), "%d/3", page + 1);
     draw_str(DISP_W - 24, DISP_H - 12, b, C_WHITE, 1);
