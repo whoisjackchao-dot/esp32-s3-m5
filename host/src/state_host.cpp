@@ -750,7 +750,9 @@ static int run_host() {
                 continue;
             }
             say("ble connected + subscribed (CTRL/AUDIO/EVENT)");
-            if (std::getenv("STICKS3_HOST_TRIGGER")) {
+            static bool triggered = false;
+            if (!triggered && std::getenv("STICKS3_HOST_TRIGGER")) {
+                triggered = true;
                 const uint8_t rd[4] = {0x10, 1, 0xF7, 0x00};
                 Buffer wb(4);
                 wb.Length(4);
