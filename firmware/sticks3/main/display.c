@@ -256,11 +256,9 @@ static void render_page(int page, bool connected, bool recording) {
     }
     /* 电量三页常驻（S4.5） */
     if (s_bat_valid) {
-        snprintf(b, sizeof(b), "BAT %d%%", s_bat_pct);
-        draw_str(4, 204, b, C_BLUE3399, 2);
-        if (s_bat_charging) {
-            draw_str(DISP_W - 32, 208, "CHG", C_BLUE3399, 1);
-        }
+        draw_str(4, 204, "BAT", C_BLUE3399, 2);
+        snprintf(b, sizeof(b), "%d%%%s", s_bat_pct, s_bat_charging ? " CHG" : "");
+        draw_str(4 + 3 * 16, 208, b, C_BLUE3399, 1);
     }
     snprintf(b, sizeof(b), "%d/3", page + 1);
     draw_str(DISP_W - 24, DISP_H - 12, b, C_WHITE, 1);
