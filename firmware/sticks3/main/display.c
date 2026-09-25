@@ -271,21 +271,17 @@ static void display_task(void *arg) {
     uint8_t last_status = 0xFFu;
     bool first = true;
     int page = 0;
-    TickType_t last_rotate = xTaskGetTickCount();
     for (;;) {
         const bool conn = ble_gatt_connected();
         const bool rec = audio_session_active();
         const bool valid = ble_gatt_host_state_valid();
         const uint8_t status = ble_gatt_host_status();
-        const TickType_t now = xTaskGetTickCount();
         const bool key = s_page_next;
         s_page_next = false;
-        const bool rotate = (now - last_rotate) >= pdMS_TO_TICKS(5000);
-        if (key || rotate) {
+        if (key) {
             page = (page + 1) % 3;
-            last_rotate = now;
         }
-        if (key || rotate || first || conn != last_conn || rec != last_rec ||
+        if (key || first || conn != last_conn || rec != last_rec ||
             valid != last_valid || status != last_status) {
             render_page(page, conn, rec);
             last_conn = conn;
