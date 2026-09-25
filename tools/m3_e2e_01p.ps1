@@ -11,13 +11,13 @@
 #   4. 智谱 ASR Key 可用（脚本中途隐藏输入，可能产生真实调用费用）
 #
 # 用法（Windows PowerShell，任意目录）：
-#   powershell -ExecutionPolicy Bypass -File C:\Temp\ESP32-S3M5\tools\m3_e2e_01p.ps1
+#   powershell -ExecutionPolicy Bypass -File <仓库根>\tools\m3_e2e_01p.ps1
 #
 # 退出码：0=全链 PASS；1=某步失败（脚本内部会标注失败步骤）；3=桥接不可用
 # ============================================================================
 
 $ErrorActionPreference = "Stop"
-$root  = "C:\Temp\ESP32-S3M5"
+$root  = Split-Path -Parent $PSScriptRoot
 $tools = Join-Path $root "tools"
 
 function Step([string]$t) {

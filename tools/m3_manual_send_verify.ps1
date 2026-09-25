@@ -52,8 +52,8 @@ function Write-Section([string]$t) {
 Write-Section "1/6 定位桥接"
 $cands = @(
     (Join-Path $env:USERPROFILE ".local\share\sticks3-opencode\bridge.json"),
-    "\\wsl.localhost\Ubuntu\home\shiwenc\.local\share\sticks3-opencode\bridge.json",
-    "\\wsl$\Ubuntu\home\shiwenc\.local\share\sticks3-opencode\bridge.json"
+    "\\wsl.localhost\Ubuntu\home\home\.local\share\sticks3-opencode\bridge.json",
+    "\\wsl$\Ubuntu\home\home\.local\share\sticks3-opencode\bridge.json"
 )
 $desc = $cands | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $desc) {

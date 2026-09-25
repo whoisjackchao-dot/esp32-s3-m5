@@ -7,7 +7,7 @@
 
 用法（Windows）：
   set STICKS3_BRIDGE_* 已由 bridge_env.ps1 装载；ASR Key 用 STICKS3_ASR_KEY 或交互输入
-  python q03_run.py --group 5s --index 1 --port COM5 --out C:\\Temp\\ESP32-S3M5\\captures\\q03.jsonl
+  python q03_run.py --group 5s --index 1 --port COM5 --out C:\\Users\\home\\esp32-s3-m5\\captures\\q03.jsonl
 """
 import argparse
 import asyncio

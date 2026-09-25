@@ -8,27 +8,27 @@
 | 项 | 值 |
 | --- | --- |
 | 数据口 | USB Type-C（设备正面），PC 侧枚举为 COMx（Windows） |
-| Windows Python | 3.12（`C:\Users\shiwenc\AppData\Local\Programs\Python\Python312\python.exe`，含 esptool） |
-| WSL 构建环境 | `tools/idf-env.sh`（ESP-IDF v5.5.5 + xtensa-gcc 14.2.0） |
+| Windows Python | 3.14（`C:\Python314\python.exe`，含 esptool / pyserial / bleak / av） |
+| WSL 构建环境 | `tools/idf-env.sh`（ESP-IDF v5.5.4 + xtensa-gcc 14.2.0） |
 | 端口号 | 本文以 COM5 为例，以实际枚举为准 |
 
 ## 1. 构建（WSL）
 
 ```bash
-cd /mnt/c/Temp/ESP32-S3M5/firmware/sticks3
-source /mnt/c/Temp/ESP32-S3M5/tools/idf-env.sh
+cd /mnt/c/Users/home/esp32-s3-m5/firmware/sticks3
+source /mnt/c/Users/home/esp32-s3-m5/tools/idf-env.sh
 idf.py -B /tmp/esp-sticks3-build build
 cp /tmp/esp-sticks3-build/bootloader/bootloader.bin \
    /tmp/esp-sticks3-build/partition_table/partition-table.bin \
-   /tmp/esp-sticks3-build/sticks3.bin /mnt/c/Temp/ESP32-S3M5/flash-artifacts/
-sha256sum /mnt/c/Temp/ESP32-S3M5/flash-artifacts/sticks3.bin
+   /tmp/esp-sticks3-build/sticks3.bin /mnt/c/Users/home/esp32-s3-m5/flash-artifacts/
+sha256sum /mnt/c/Users/home/esp32-s3-m5/flash-artifacts/sticks3.bin
 ```
 
 ## 2. 首次烧录前的强制备份（REL-02）
 
 ```powershell
-$PY = 'C:\Users\shiwenc\AppData\Local\Programs\Python\Python312\python.exe'
-& $PY -m esptool --chip esp32s3 -p COM5 --baud 921600 read-flash 0 0x800000 C:\Temp\ StickS3-backup\factory-flash-8MB.bin
+$PY = 'python'
+& $PY -m esptool --chip esp32s3 -p COM5 --baud 921600 read-flash 0 0x800000 C:\Users\home\StickS3-backup\factory-flash-8MB.bin
 ```
 
 记录 `factory-flash-8MB.bin` 的 SHA256 并存档于仓库外。**此备份是恢复出厂的唯一途径。**
@@ -38,9 +38,9 @@ $PY = 'C:\Users\shiwenc\AppData\Local\Programs\Python\Python312\python.exe'
 ```powershell
 & $PY -m esptool --chip esp32s3 -p COM5 --baud 921600 --before default-reset --after hard-reset `
   write-flash `
-  0x0     C:\Temp\ESP32-S3M5\flash-artifacts\bootloader.bin `
-  0x8000  C:\Temp\ESP32-S3M5\flash-artifacts\partition-table.bin `
-  0x10000 C:\Temp\ESP32-S3M5\flash-artifacts\sticks3.bin
+  0x0     C:\Users\home\esp32-s3-m5\flash-artifacts\bootloader.bin `
+  0x8000  C:\Users\home\esp32-s3-m5\flash-artifacts\partition-table.bin `
+  0x10000 C:\Users\home\esp32-s3-m5\flash-artifacts\sticks3.bin
 ```
 
 成功判据：`Hash of data verified.` + `Hard resetting via RTS pin...`

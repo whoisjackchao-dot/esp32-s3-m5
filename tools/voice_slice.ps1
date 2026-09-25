@@ -6,10 +6,11 @@
 #   powershell ... -AudioPath C:\path\x.wav                                   # 跳过采音（调试）
 param([string]$AudioPath = "")
 $ErrorActionPreference = "Stop"
-$src = "C:\Temp\ESP32-S3M5\host\src"
-$tools = "C:\Temp\ESP32-S3M5\tools"
-$capDir = "C:\Temp\ESP32-S3M5\captures\slice"
-$py = "C:\Users\shiwenc\AppData\Local\Programs\Python\Python312\python.exe"
+$root = Split-Path -Parent $PSScriptRoot
+$src = Join-Path $root "host\src"
+$tools = Join-Path $root "tools"
+$capDir = Join-Path $root "captures\slice"
+$py = (Get-Command python).Source
 New-Item -ItemType Directory -Force -Path $capDir | Out-Null
 
 $need = 'STICKS3_BRIDGE_URL', 'STICKS3_BRIDGE_TOKEN', 'STICKS3_TUI_EPOCH', 'STICKS3_SESSION_ID'

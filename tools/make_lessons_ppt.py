@@ -323,6 +323,6 @@ text(s, 0.6, y + 0.12, 12.15, 0.5, [
     ("工具: python3 tools/project_token_stats.py [--html 报告.html] [--json 数据.json] [--review]   ·   报告与数据: evidence/token-stats/", 12.5, False, GRAY, 0),
 ])
 
-OUT = "/mnt/c/Temp/ESP32-S3M5/evidence/token-stats/2026-09-24-Token消耗LessonsLearnt.pptx"
+OUT = "/mnt/c/Users/home/esp32-s3-m5/evidence/token-stats/2026-09-24-Token消耗LessonsLearnt.pptx"
 prs.save(OUT)
 print(f"PPT 已生成: {OUT}  ({TOTAL} 页)")

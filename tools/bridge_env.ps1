@@ -1,13 +1,13 @@
 ﻿# 桥接环境变量装载器：读插件写的 bridge.json → 查 /v1/binding 取 sessionID
 # → 导出 STICKS3_BRIDGE_* 环境变量（不打印 token）
 # 用法（必须点源，使变量留在当前会话）：
-#   . "C:\Temp\ESP32-S3M5\tools\bridge_env.ps1"
+#   . "<仓库根>\tools\bridge_env.ps1"
 $ErrorActionPreference = "Stop"
 
 $cands = @(
     (Join-Path $env:USERPROFILE ".local\share\sticks3-opencode\bridge.json"),
-    "\\wsl.localhost\Ubuntu\home\shiwenc\.local\share\sticks3-opencode\bridge.json",
-    "\\wsl$\Ubuntu\home\shiwenc\.local\share\sticks3-opencode\bridge.json"
+    "\\wsl.localhost\Ubuntu\home\home\.local\share\sticks3-opencode\bridge.json",
+    "\\wsl$\Ubuntu\home\home\.local\share\sticks3-opencode\bridge.json"
 )
 $desc = $cands | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 if (-not $desc) {

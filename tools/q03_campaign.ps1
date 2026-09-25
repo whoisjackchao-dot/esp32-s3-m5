@@ -1,11 +1,11 @@
 ﻿param(
     [string]$Port = "COM5",
-    [string]$Out = "C:\Temp\ESP32-S3M5\captures\q03\records.jsonl",
+    [string]$Out = (Join-Path (Split-Path -Parent $PSScriptRoot) "captures\q03\records.jsonl"),
     [int]$MaxTry = 3,
     [hashtable]$Counts = @{ "5s" = 5; "10s" = 5; "30s" = 5 }
 )
 $ErrorActionPreference = "Stop"
-$py = "C:\Users\shiwenc\AppData\Local\Programs\Python\Python312\python.exe"
+$py = (Get-Command python).Source
 $order = @("5s", "10s", "30s")
 
 $sec = Read-Host "智谱 API Key（隐藏输入，本战役复用）" -AsSecureString
