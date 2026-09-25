@@ -275,6 +275,9 @@ esp_err_t audio_capture_play(const int16_t *mono, size_t samples) {
 }
 
 esp_err_t audio_capture_beep(void) {
+    if (s_tx_chan == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
     static int16_t tone[2400]; /* 150ms @16kHz */
     const size_t n = sizeof(tone) / sizeof(tone[0]);
     for (size_t i = 0; i < n; ++i) {
@@ -282,5 +285,19 @@ esp_err_t audio_capture_beep(void) {
         tone[i] = ((i / (AUDIO_SAMPLE_RATE / 1000 / 2)) % 2u == 0) ? (int16_t)10000
                                                                   : (int16_t)-10000;
     }
-    return audio_capture_play(tone, n);
+    pm1_es8311(true); /* 功放仅在提示音期间使能 */
+    vTaskDelay(pdMS_TO_TICKS(10));
+    if (s_codec != NULL) {
+        es8311_voice_volume_set(s_codec, 70, NULL);
+        es8311_voice_mute(s_codec, false);
+    }
+    audio_capture_play(tone, n);
+    /* 静音尾（20ms 0）：防止 I2S underrun 停在方波沿上产生持续电平 */
+    static int16_t silence[320];
+    audio_capture_play(silence, sizeof(silence) / sizeof(silence[0]));
+    if (s_codec != NULL) {
+        es8311_voice_mute(s_codec, true);
+    }
+    pm1_es8311(false); /* 关功放 → 杜绝残留长鸣 */
+    return ESP_OK;
 }
