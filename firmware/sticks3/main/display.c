@@ -40,7 +40,7 @@ static uint16_t s_fb[DISP_W * DISP_H];
 
 /* RGB565 */
 #define C_BLACK  0x0000
-#define C_PURPLE 0x8010
+#define C_PURPLE 0xCA9F /* 淡紫 #CC99FF */
 #define C_WHITE  0xFFFF
 #define C_RED    0xF800
 #define C_GREEN  0x07E0
@@ -162,11 +162,11 @@ static void render_page(int page, bool connected, bool recording) {
     fill(C_BLACK);
     if (page == 0) {
         draw_title("STATUS");
-        draw_str(4, 44, connected ? "BLE:CONN" : "BLE:ADV", C_WHITE, 2);
-        draw_str(4, 74, valid ? "HOST:OK" : "HOST:--", C_WHITE, 2);
-        draw_str(4, 108, valid ? status_text(s->status) : "NO STATE", C_WHITE, 2);
+        draw_str(4, 44, connected ? "BLE:CONN" : "BLE:ADV", C_WHITE, 1);
+        draw_str(4, 58, valid ? "HOST:OK" : "HOST:--", C_WHITE, 1);
+        draw_str(4, 82, valid ? status_text(s->status) : "NO STATE", C_WHITE, 2);
         if (recording) {
-            draw_str(4, 138, "REC", C_RED, 2);
+            draw_str(4, 110, "REC", C_RED, 1);
         }
         if (valid && (s->flags & S3P_FLAG_EXPIRED) != 0u) {
             draw_str(100, 22, "STALE", C_YELLOW, 1);
@@ -178,24 +178,24 @@ static void render_page(int page, bool connected, bool recording) {
         } else {
             snprintf(b, sizeof(b), "-");
         }
-        draw_str(4, 44, b, C_WHITE, 2);
-        snprintf(b, sizeof(b), "%.8s", (valid && s->project[0] != '\0') ? s->project : "-");
-        draw_str(4, 74, b, C_WHITE, 2);
+        draw_str(4, 44, b, C_WHITE, 1);
+        snprintf(b, sizeof(b), "%.15s", (valid && s->project[0] != '\0') ? s->project : "-");
+        draw_str(4, 58, b, C_WHITE, 1);
         if (valid) {
             snprintf(b, sizeof(b), "T%u D%u/%u", (unsigned)s->tool_count,
                      (unsigned)s->todo_completed, (unsigned)s->todo_total);
         } else {
             snprintf(b, sizeof(b), "-");
         }
-        draw_str(4, 108, b, C_WHITE, 2);
+        draw_str(4, 82, b, C_WHITE, 2);
     } else {
         draw_title("USAGE");
         u32_text(b, sizeof(b), valid ? s->tokens_input : S3P_STATE_UNKNOWN);
-        draw_str(4, 44, b, C_WHITE, 2);
+        draw_str(4, 44, b, C_WHITE, 1);
         u32_text(b, sizeof(b), valid ? s->tokens_output : S3P_STATE_UNKNOWN);
-        draw_str(4, 74, b, C_WHITE, 2);
+        draw_str(4, 58, b, C_WHITE, 1);
         u32_text(b, sizeof(b), valid ? s->cost_milli : S3P_STATE_UNKNOWN);
-        draw_str(4, 108, b, C_WHITE, 2);
+        draw_str(4, 82, b, C_WHITE, 2);
     }
     snprintf(b, sizeof(b), "%d/3", page + 1);
     draw_str(DISP_W - 24, DISP_H - 12, b, C_WHITE, 1);
