@@ -40,6 +40,7 @@ static uint16_t s_fb[DISP_W * DISP_H];
 
 /* RGB565 */
 #define C_BLACK  0x0000
+#define C_PURPLE 0x8010
 #define C_WHITE  0xFFFF
 #define C_RED    0xF800
 #define C_GREEN  0x07E0
@@ -130,10 +131,17 @@ static const char *status_text(uint8_t status) {
 }
 
 /* 三页显示（M4/S4.3，英文界面）：状态 / 任务 / 用量；5s 自动翻页（切页归 S4.6 侧键）。 */
-/* 字段：标签 8px（黄）+ 值 16px（白），标签固定占 6 字符宽。 */
-static void draw_field(int y, const char *label, const char *value) {
-    draw_str(4, y + 5, label, C_YELLOW, 1);
-    draw_str(4 + 6 * 8, y, value, C_WHITE, 2);
+/* 紫色标题：页名 16px，按字距铺满整行（左到右）。 */
+static void draw_title(const char *t) {
+    const int n = (int)strlen(t);
+    const int glyph = 16;
+    const int span = DISP_W - 4 - n * glyph;
+    const int gap = (n > 1 && span > 0) ? span / (n - 1) : 0;
+    int x = 2;
+    for (const char *p = t; *p != '\0'; ++p) {
+        draw_char8(x, 2, *p, C_PURPLE, 2);
+        x += glyph + gap;
+    }
 }
 
 /* 用量三态：未知 "?" / 未报告 "-" / 具体值（不伪装 0，ST-08）。 */
@@ -152,48 +160,45 @@ static void render_page(int page, bool connected, bool recording) {
     const s3p_state_snapshot *s = ble_gatt_host_snapshot();
     char b[40];
     fill(C_BLACK);
-    draw_str(4, 2, "STICKS3", C_YELLOW, 1);
     if (page == 0) {
-        draw_str(4, 20, "STATUS", C_WHITE, 2);
-        draw_str(4, 52, connected ? "BLE CONN" : "BLE ADV", C_WHITE, 2);
-        draw_str(4, 76, valid ? "HOST OK" : "HOST --", C_WHITE, 2);
-        const char *t = valid ? status_text(s->status) : "NO STATE";
-        const int len = (int)strlen(t);
-        draw_str(4, 108, t, C_WHITE, (len <= 5) ? 3 : 2);
+        draw_title("STATUS");
+        draw_str(4, 44, connected ? "BLE:CONN" : "BLE:ADV", C_WHITE, 2);
+        draw_str(4, 74, valid ? "HOST:OK" : "HOST:--", C_WHITE, 2);
+        draw_str(4, 108, valid ? status_text(s->status) : "NO STATE", C_WHITE, 2);
         if (recording) {
-            draw_str(4, 156, "REC", C_RED, 3);
+            draw_str(4, 138, "REC", C_RED, 2);
         }
         if (valid && (s->flags & S3P_FLAG_EXPIRED) != 0u) {
-            draw_str(96, 22, "STALE", C_YELLOW, 1);
+            draw_str(100, 22, "STALE", C_YELLOW, 1);
         }
     } else if (page == 1) {
-        draw_str(4, 20, "TASK", C_WHITE, 2);
-        draw_field(52, "PROJ", (valid && s->project[0] != '\0') ? s->project : "-");
-        draw_field(80, "TITLE", (valid && s->title[0] != '\0') ? s->title : "-");
-        if (valid) {
-            snprintf(b, sizeof(b), "%u", (unsigned)s->tool_count);
+        draw_title("TASK");
+        if (valid && s->title[0] != '\0') {
+            snprintf(b, sizeof(b), "%.8s", s->title);
         } else {
             snprintf(b, sizeof(b), "-");
         }
-        draw_field(108, "TOOL", b);
+        draw_str(4, 44, b, C_WHITE, 2);
+        snprintf(b, sizeof(b), "%.8s", (valid && s->project[0] != '\0') ? s->project : "-");
+        draw_str(4, 74, b, C_WHITE, 2);
         if (valid) {
-            snprintf(b, sizeof(b), "%u/%u", (unsigned)s->todo_completed,
-                     (unsigned)s->todo_total);
+            snprintf(b, sizeof(b), "T%u D%u/%u", (unsigned)s->tool_count,
+                     (unsigned)s->todo_completed, (unsigned)s->todo_total);
         } else {
             snprintf(b, sizeof(b), "-");
         }
-        draw_field(136, "TODO", b);
+        draw_str(4, 108, b, C_WHITE, 2);
     } else {
-        draw_str(4, 20, "USAGE", C_WHITE, 2);
+        draw_title("USAGE");
         u32_text(b, sizeof(b), valid ? s->tokens_input : S3P_STATE_UNKNOWN);
-        draw_field(52, "IN", b);
+        draw_str(4, 44, b, C_WHITE, 2);
         u32_text(b, sizeof(b), valid ? s->tokens_output : S3P_STATE_UNKNOWN);
-        draw_field(80, "OUT", b);
+        draw_str(4, 74, b, C_WHITE, 2);
         u32_text(b, sizeof(b), valid ? s->cost_milli : S3P_STATE_UNKNOWN);
-        draw_field(108, "COST", b);
+        draw_str(4, 108, b, C_WHITE, 2);
     }
     snprintf(b, sizeof(b), "%d/3", page + 1);
-    draw_str(DISP_W - 24, DISP_H - 14, b, C_WHITE, 1);
+    draw_str(DISP_W - 24, DISP_H - 12, b, C_WHITE, 1);
 }
 
 static void display_task(void *arg) {
