@@ -650,6 +650,24 @@ static void http_thread() {
     WSACleanup();
 }
 
+static void write_host_descriptor() {
+    const char* lad = std::getenv("LOCALAPPDATA");
+    if (lad == nullptr) return;
+    const std::string dir = std::string(lad) + "\\sticks3";
+    CreateDirectoryA(dir.c_str(), nullptr);
+    const std::string path = dir + "\\host.json";
+    char js[256];
+    std::snprintf(js, sizeof(js), "{\"url\":\"http://127.0.0.1:%d\",\"token\":\"%s\"}",
+                  g_host_port, g_host_token.c_str());
+    FILE* f = std::fopen(path.c_str(), "wb");
+    if (f != nullptr) {
+        std::fwrite(js, 1, std::strlen(js), f);
+        std::fclose(f);
+        std::printf("[state_host] descriptor -> %s\n", path.c_str());
+        std::fflush(stdout);
+    }
+}
+
 static int run_host() {
     retry_store_init(&g_retry);
     {
@@ -658,6 +676,7 @@ static int run_host() {
         const char* hp = std::getenv("STICKS3_HOST_PORT");
         if (hp && std::atoi(hp) > 0) g_host_port = std::atoi(hp);
         std::thread(http_thread).detach();
+        write_host_descriptor();
     }
     const char* sec = std::getenv("STICKS3_HOST_SECONDS");
     const DWORD deadline = (sec && std::atoi(sec) > 0) ? (GetTickCount() + (DWORD)std::atoi(sec) * 1000u) : 0;

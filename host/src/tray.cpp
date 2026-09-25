@@ -21,6 +21,8 @@ constexpr UINT IDM_REFRESH = 1002;
 constexpr UINT IDM_KEY_STORE = 1003;
 constexpr UINT IDM_KEY_DELETE = 1004;
 constexpr UINT IDM_EXIT = 1005;
+constexpr UINT IDM_RETRY_RECOGNIZE = 1006;
+constexpr UINT IDM_RETRY_APPEND = 1007;
 
 NOTIFYICONDATAW g_nid{};
 UINT g_taskbar_created = 0;
@@ -110,6 +112,84 @@ bool health_ok(const std::string& url, const std::string& token) {
     return ok;
 }
 
+std::wstring host_json_path() {
+    wchar_t env[1024];
+    const DWORD n = GetEnvironmentVariableW(L"STICKS3_HOST_JSON", env, ARRAYSIZE(env));
+    if (n > 0 && n < ARRAYSIZE(env)) return env;
+    wchar_t lad[1024];
+    const DWORD m = GetEnvironmentVariableW(L"LOCALAPPDATA", lad, ARRAYSIZE(lad));
+    if (m > 0 && m < ARRAYSIZE(lad)) {
+        std::wstring p = std::wstring(lad) + L"\\sticks3\\host.json";
+        if (GetFileAttributesW(p.c_str()) != INVALID_FILE_ATTRIBUTES) return p;
+    }
+    return {};
+}
+
+bool host_post(const std::string& url, const std::string& token, const wchar_t* path,
+               DWORD& status_out, std::string& body_out) {
+    const std::wstring wurl = widen(url);
+    URL_COMPONENTS uc{};
+    uc.dwStructSize = sizeof(uc);
+    uc.dwSchemeLength = uc.dwHostNameLength = uc.dwUrlPathLength = static_cast<DWORD>(-1);
+    if (!WinHttpCrackUrl(wurl.c_str(), static_cast<DWORD>(wurl.size()), 0, &uc)) return false;
+    const std::wstring host(uc.lpszHostName, uc.dwHostNameLength);
+    HINTERNET session = WinHttpOpen(L"StickS3Tray/0.1", WINHTTP_ACCESS_TYPE_NO_PROXY, nullptr,
+                                    nullptr, 0);
+    if (!session) return false;
+    HINTERNET conn = WinHttpConnect(session, host.c_str(), uc.nPort, 0);
+    bool ok = false;
+    if (conn) {
+        HINTERNET req = WinHttpOpenRequest(conn, L"POST", path, nullptr, WINHTTP_NO_REFERER,
+                                           WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+        if (req) {
+            const std::wstring header = L"Authorization: Bearer " + widen(token);
+            if (WinHttpSendRequest(req, header.c_str(), static_cast<DWORD>(-1), WINHTTP_NO_REQUEST_DATA,
+                                   0, 0, 0) &&
+                WinHttpReceiveResponse(req, nullptr)) {
+                DWORD st = 0, len = sizeof(st);
+                WinHttpQueryHeaders(req, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                                    WINHTTP_HEADER_NAME_BY_INDEX, &st, &len, WINHTTP_NO_HEADER_INDEX);
+                status_out = st;
+                DWORD avail = 0;
+                while (WinHttpQueryDataAvailable(req, &avail) && avail > 0) {
+                    std::string chunk(avail, '\0');
+                    DWORD got = 0;
+                    if (!WinHttpReadData(req, chunk.data(), avail, &got) || got == 0) break;
+                    body_out.append(chunk.data(), got);
+                }
+                ok = true;
+            }
+            WinHttpCloseHandle(req);
+        }
+        WinHttpCloseHandle(conn);
+    }
+    WinHttpCloseHandle(session);
+    return ok;
+}
+
+void retry_action(const wchar_t* path, const wchar_t* label) {
+    const std::wstring hp = host_json_path();
+    if (hp.empty()) {
+        MessageBoxW(nullptr, L"找不到 host.json（state_host 未运行？）", label, MB_ICONWARNING);
+        return;
+    }
+    const std::string json = read_text_file(hp);
+    std::string url, token;
+    if (json.empty() || !tray::json_string(json, "url", url) ||
+        !tray::json_string(json, "token", token)) {
+        MessageBoxW(nullptr, L"host.json 不可读或字段缺失", label, MB_ICONWARNING);
+        return;
+    }
+    DWORD st = 0;
+    std::string body;
+    if (!host_post(url, token, path, st, body)) {
+        MessageBoxW(nullptr, L"无法连接 state_host", label, MB_ICONERROR);
+        return;
+    }
+    const std::wstring msg = L"HTTP " + std::to_wstring(st) + L"\n" + widen(body);
+    MessageBoxW(nullptr, msg.c_str(), label, MB_ICONINFORMATION);
+}
+
 void refresh_status() {
     const std::wstring path = bridge_json_path();
     if (path.empty()) {
@@ -183,6 +263,9 @@ void show_menu(HWND hwnd) {
     AppendMenuW(menu, MF_STRING, IDM_KEY_STORE, L"配置 ASR Key…");
     AppendMenuW(menu, MF_STRING, IDM_KEY_DELETE, L"删除 ASR Key");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, IDM_RETRY_RECOGNIZE, L"重试识别");
+    AppendMenuW(menu, MF_STRING, IDM_RETRY_APPEND, L"重试填入");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, IDM_EXIT, L"退出");
     SetForegroundWindow(hwnd);
     TrackPopupMenu(menu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, nullptr);
@@ -210,6 +293,12 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                     return 0;
                 case IDM_KEY_DELETE:
                     launch_cred_tool(L"delete");
+                    return 0;
+                case IDM_RETRY_RECOGNIZE:
+                    retry_action(L"/v1/retry/recognize", L"重试识别");
+                    return 0;
+                case IDM_RETRY_APPEND:
+                    retry_action(L"/v1/retry/append", L"重试填入");
                     return 0;
                 case IDM_EXIT:
                     DestroyWindow(hwnd);
