@@ -1,0 +1,32 @@
+# 统一文本文件行尾为 LF，避免 Windows/WSL 跨平台产生大量“假改动”
+# 背景：仓库索引中文本文件为 LF；曾因 Windows 侧工具写入 CRLF，导致
+#       `git status` 出现 160 个纯行尾差异（内容零变化）。见 开发准备就绪核查。
+* text=auto eol=lf
+
+# 明确标记二进制/资产，禁止行尾转换与 diff 文本化
+*.jpg   binary
+*.jpeg  binary
+*.png   binary
+*.gif   binary
+*.ico   binary
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+*.bin   binary
+*.hex   binary
+*.elf   binary
+*.a     binary
+*.obj   binary
+*.exe   binary
+*.dll   binary
+*.lib   binary
+*.pcm   binary
+*.opus  binary
+*.wav   binary
+*.mp3   binary
+*.s3pcap binary
+*.deb   binary
+*.zip   binary
+*.gz    binary
+*.xz    binary
