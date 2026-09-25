@@ -20,19 +20,48 @@
 
 static const char *TAG = "sticks3";
 
+/* S4.5 息屏：60s 无活动关背光（保连）；按键/新等待错误/录音可唤醒；心跳不唤醒。 */
+#define IDLE_OFF_MS 60000u
+static volatile TickType_t s_last_activity;
+
+static void note_activity(void) {
+    s_last_activity = xTaskGetTickCount();
+}
+
+static void power_task(void *arg) {
+    (void)arg;
+    bool bl_on = true;
+    note_activity();
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        const TickType_t idle_for = xTaskGetTickCount() - s_last_activity;
+        const bool want_on = (idle_for < pdMS_TO_TICKS(IDLE_OFF_MS)) || audio_session_active();
+        if (want_on != bl_on) {
+            bl_on = want_on;
+            display_backlight(want_on);
+            ESP_LOGI(TAG, "背光 %s（空闲 %lums）", want_on ? "开" : "关",
+                     (unsigned long)(idle_for * portTICK_PERIOD_MS));
+        }
+    }
+}
+
 static void on_button_press(void) {
+    note_activity();
     audio_session_request_start();
 }
 
 static void on_button_release(void) {
+    note_activity();
     audio_session_request_stop();
 }
 
 static void on_side_short(void) {
+    note_activity();
     display_next_page();
 }
 
 static void on_side_long(void) {
+    note_activity();
     audio_session_abort();
 }
 
@@ -123,6 +152,7 @@ static void alert_task(void *arg) {
             valid && !expired && (st == S3P_STATUS_WAITING || st == S3P_STATUS_ERROR);
         const bool was_alert = (prev == S3P_STATUS_WAITING || prev == S3P_STATUS_ERROR);
         if (alert && !was_alert) {
+            note_activity();
             if (audio_session_active()) {
                 pending = true;
             } else {
@@ -199,6 +229,9 @@ void app_main(void) {
     }
     if (xTaskCreate(alert_task, "alert", 4096, NULL, 3, NULL) != pdPASS) {
         ESP_LOGW(TAG, "提示音任务创建失败");
+    }
+    if (xTaskCreate(power_task, "power", 3072, NULL, 2, NULL) != pdPASS) {
+        ESP_LOGW(TAG, "电源任务创建失败");
     }
     ESP_LOGI(TAG, "free heap        : %lu", (unsigned long)esp_get_free_heap_size());
 

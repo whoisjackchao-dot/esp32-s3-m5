@@ -259,6 +259,10 @@ void display_next_page(void) {
     s_page_next = true;
 }
 
+void display_backlight(bool on) {
+    gpio_set_level(DISP_BL, on ? 1 : 0);
+}
+
 static void display_task(void *arg) {
     (void)arg;
     bool last_conn = false;
