@@ -276,3 +276,69 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **本轮提交边界**：所有新增文件（`tools/q04_*.py`、`tools/test_q04_*.py`、`contracts/M3-Q04*.md`、本索引更新）**仅在工作区，未 commit、未 push**。
 - 过程登记：评分器首次派发（12 分钟）**只完成设计未落盘任何文件**，经续接会话强制落盘后补齐（tools/q04_grader.py 时间戳 09:24）；语料工具首次即落盘。**"代理报告完成"不等于"文件存在"——本轮以磁盘核验纠正。**
 
+### 2026-09-25 会话登记（Sisyphus）——新机 WSL 开发链路重建（环境就绪，非功能交付）
+
+**背景**：本项目开发工作迁移到**另一台电脑**（TIMI TM1707 / 8GB / WSL Ubuntu 26.04 / 用户 `home` / 路径 `C:\Users\home\esp32-s3-m5`）。旧机（HP EliteBook / 32GB / 用户 `shiwenc` / `C:\Temp\ESP32-S3M5`）的"已验证环境"不随仓库迁移，本机 WSL 链路原为空。用户指示：**修复 WSL 链路与依赖包，不使用 Windows 原生 ESP-IDF**。
+
+**完成（全部本机实测）**：
+1. **ESP-IDF v5.5.4 源码**：主仓库取自 Gitee 镜像（GitHub 不可达）；子模块源文件按 §D1 补齐；工具链经 `IDF_GITHUB_ASSETS=dl.espressif.com/github_assets` 下载。
+2. **工具链**：xtensa-esp-elf 14.2.0_20260121；Python venv `idf5.5_py3.14_env`（3.14.4）；ninja 1.13.2（pip）；openocd v0.12.0-esp32-20251215；libusb 1.0.29 用户态解包。
+3. **固件构建通过**：`toolchain-check` → 197,152 B（sha `cb2fe121…`）；**真实工程 `firmware/sticks3` → `sticks3.bin` 734,000 B（sha `8c1377d9…`，分区 30% 空闲）**，`ninja -j4` 限流。
+4. **插件**：bun 1.4.2；`npm install` + `bun test` **70/70** + `tsc --noEmit` exit 0。
+5. **WSL Python 工具链**：`tools/` 单测 **190 OK**。
+6. **行尾归一**：新增 `.gitattributes`，160 项 CRLF 假改动清零。
+7. **`tools/idf-env.sh` 适配**：自动探测 venv、注入 `IDF_SKIP_CHECK_SUBMODULES=1`。
+
+**关键网络约束**：GitHub 不可达（000）；使用 Gitee + `IDF_GITHUB_ASSETS` 镜像 + 本机官方副本补齐子模块。
+
+**详细报告**：[开发准备就绪核查-2026-09-25-新机WSL重建](./开发准备就绪核查-2026-09-25-新机WSL重建.md)
+
+**工作区改动（未提交）**：`.gitattributes`（新增）、`tools/idf-env.sh`、`firmware/{sticks3,toolchain-check}/sdkconfig`（版本再生）。
+
+**待决（不得代批）**：Q1 ESP-IDF 版本（文档基线 5.5.5 vs 本机 5.5.4）；Q2 是否提交上述改动；Q4 Windows 侧 Host/Q03-Q04 脚本路径迁移（硬编码 `C:\Temp\ESP32-S3M5`）；Q5 `ble-probe.py` 断言陈旧。
+
+**Q3 设备链路 —— ✅ 已完成（2026-09-25）**：
+- 真实在线设备**仅 1 台**：串口 **COM5**，esptool 识别为 ESP32-S3（8MB Flash + 8MB PSRAM ＝ M5StickS3），USB-Serial/JTAG，MAC `<MAC>`；COM7/COM10/COM11 为幽灵记录。
+- 串口：项目固件运行中，心跳 `sticks3: hb: uptime=25s heap=8489715 audio_ready=1 ble_conn=0`。
+- BLE：广播名 `StickS3`，地址 `<MAC>`；服务/三特征与 M2 契约一致；配对加密、MTU 247。
+- 会话：READY → BEGIN(500/16000/60) → 500 帧 → END(500 帧/480000 样本)，**FNV-1a 独立复算 == 设备 summary `0x91d5d552`** → **PASS 15/15**。设备功能正常。
+- **Q5（已修复）**：`tools/ble-probe.py` 断言陈旧（50 帧/3s/等待 25s），与现行 M2 v1.1（500 帧/30s）不符。**已按冻结契约更新并真实设备复跑 PASS（21/0，500 帧、FNV 一致）**。
+- **新操作约束**：多次连接/会话后设备侧 BLE 会拒绝订阅（`start_notify` 前断连）；**会话前先复位设备**（`python -m esptool --chip esp32s3 -p COM5 read_mac` 即硬复位）可稳定恢复。
+
+### 2026-09-25 会话登记（续）——Q04 采样暂存 + M4 启动
+
+- **Q04 采样任务暂存**（用户 2026-09-25 指示）：当前不具备收音条件，暂停 15 条语料采音；**M3 出口维持未闭**（Q03 ✅，Q04 ⏳ 暂存），非放弃。
+- **M4 启动**：进入 **M4 状态屏与托盘** 实现。现状为 greenfield（插件无状态归约、固件仅 M2 单帧桩、host 无托盘）。
+- **新增计划**：[M4 开发计划](./StickS3_OpenCode_M4开发计划.md)：7 个故事（S4.1—S4.7）+ DoR 表 + C10 待冻结项（中文字体 / 长按阈值 / 息屏细节 / LVGL-vs-自绘）。
+- **首个故事 S4.1（M10 精简快照归约，插件，T 类）可开工**：依赖 BR-03 数据字典（已冻结），纯逻辑 TDD，不涉字体/硬件。
+- **阻塞项**：S4.3/S4.6/S4.5 分别待冻结中文字体、长按阈值、息屏细节。
+- **S4.1 完成（2026-09-25）**：`plugin/src/core/state/{types,reduce}.ts` + `plugin/test/state/reduce.test.ts`（15 用例，覆盖 ST-01—ST-12 归约语义）；`bun test` **85/85**、`tsc` exit 0。证据见 [M4 开发计划 §6](./StickS3_OpenCode_M4开发计划.md)。
+- **Q4 host 工具链（2026-09-25 部分完成）**：复用 VS2019 BuildTools；修 7 个 host 构建脚本（vcvars 回退 + `%~dp0` + `/utf-8`）、7 个 tools 脚本 + 2 份文档（路径推导 + 本机 Python + WSL 用户名 `home`）。重建 **8 个 host .exe**，协议测试 **997 checks / 0**（`asr_transport` 需先起 mock-asr）。**`ble_client.exe` 阻塞**：需 VS2022 新 cppwinrt/SDK，本机仅 VS2019/SDK 10.0.19041 且非管理员 → 见 Q6。
+- **S4.1b 完成（2026-09-25 续）**：`plugin/src/core/state/store.ts` + `plugin/src/plugin/stateRead.ts`；桥接 `/v1/state/stream` 接入快照提供者与心跳；`index.ts` 接线。已接线用量/模型、行工具/失败数/错误码、事件驱动刷新（14 类事件 + 500ms 节流 + 10s 心跳保活）。`bun test` **107/107**、`tsc` exit 0。未交付：真实 TUI 运行验证、BLE 下发、**ST-12 子任务 busy（TUI-API 无 children 数据源）**。
+- **S4.2 契约提案（待批准）**：BLE `STATE(0x12)` 快照载荷字段布局见 [M4 开发计划 §7](./StickS3_OpenCode_M4开发计划.md)；**未冻结、无实现**。
+- **Q4 补验（2026-09-25）**：host 自检**重新实测** 997 checks / 0（reasm 816 + adapter 35 + voice_txn 93 + credential 21 + transport 32）；**CMake host 路径**（README §3）经 Ninja + VS2019 验证，`toolchain_check.exe` 输出 `win32 link ok`（exit 0）；本机无 clang-cl → `ble_client` 确无 VS2022 替代。
+- **Q6 已解决（2026-09-25，免管理员）**：`ble_client.exe` 经「NuGet 现代 cppwinrt 头 + `/std:c++17 /await`」构建成功并**端到端 PASS**（独立 FNV 一致）。附带修复：含中文的 `.cmd` 在本机 GBK 下崩坏，`build_ble_client.cmd`/`flash-sticks3.cmd` 改纯 ASCII。**M4 S4.7 托盘不再被 VS2022 阻塞**（偏离：C++17+/await，非 C++20）。
+- **S4.7a 完成（2026-09-25）**：`host/src/tray.cpp`（Win32 托盘壳 + 消息循环 + 退出菜单）+ `build_tray.cmd`（纯 ASCII）；`tray.exe` BUILD_OK（117,760 B）、启动冒烟 RUNNING_OK。无 WinRT 依赖。
+- **S4.7b 完成（2026-09-25）**：托盘读 `bridge.json` → WinHTTP `GET /v1/health` → 菜单连接态 + ASCII `status_code`；`tray.exe` BUILD_OK（158,208 B）。**全路径实测**：`NO_BRIDGE`/`DESCRIPTOR_BAD`/`HEALTHY`（本地 mock）/`UNREACHABLE`（关闭端口）。唯一未测：真插件桥接下的 HEALTHY（需注册插件+重启 OpenCode）。
+- **S4.7c 完成（2026-09-25）**：托盘菜单「配置/删除 ASR Key」→ 复用 `asr_cred_tool.exe`（Key 控制台隐藏输入，不进命令行）；`tray.exe` BUILD_OK（161,792 B）、冒烟 RUNNING_OK。未测：真实菜单点击 spawn 与真机凭据写入。
+- **分析性推进（2026-09-25）**：[M4 计划 §7](./StickS3_OpenCode_M4开发计划.md) 增 **MTU 可行性分析**（最坏 ~125 B < MTU247 单通知；MTU65 需分片/截断）；§9 增 **S4.7d（重试入口）故事卡**——**阻塞于 host 常驻服务与 IPC-02 冻结**（现 host 均一次性 exe，且回执不存正文）。
+- **托盘可测性（2026-09-25）**：新增 `host/src/tray_parse.h`（纯解析）+ `tray_parse_test.cpp`（**7 用例**，`TRAY_PARSE_PASS`）；重构后 `tray.exe` BUILD_OK 且 HEALTHY 复验通过。
+- **刷写产物就绪（2026-09-25）**：`flash-artifacts/` 用本机 ESP-IDF v5.5.4 产物填充（bootloader 20,832 B / partition-table 3,072 B / **sticks3 734,000 B sha `8c1377d9…`**）+ `SHA256SUMS`（`sha256sum -c` **全 OK**）；受 `.gitignore` 本地保留。USB 刷写流程（`flash-sticks3.cmd`/`USB刷写清单.md`）在本机就绪。
+- **tools 脚本校验（2026-09-25）**：7 个被编辑的 `.ps1` 经 PowerShell 解析器全部 **OK**（含 `zhipu_asr_verify.ps1`）；`$PSScriptRoot` 用于 param 默认值的模式经最小运行时验证 **PSROOT_OK**。
+- **S4.2 契约冻结 + 固件侧实现（2026-09-25）**：用户**批准** → [contracts/M4-STATE快照冻结.md](./contracts/M4-STATE快照冻结.md) v1.0。实现：`s3p_state.{h,c}`（编解码，主机测试 **27/0**）；`state_merge.{h,c}`（BR-03→STATE 合并，**19/0**）；固件 `ble_gatt.c` case 0x12 接入解码 + `ble_gatt_host_status()`；display 按真实 status 呈现（**修正 ERROR→IDLE 的 ST-04 缺陷**）；固件重建 **734,368 B**、`flash-artifacts` 更新（sha `d17a63a1…`）。**⏳ host GATT 写端待 host 形态；设备端到端待刷机授权**。
+- **S4.2 设备端到端 PASS（2026-09-25，用户授权刷机后）**：新固件已刷入；`ble_client`（升级为 v1.0 STATE：`state_merge`+`s3p_state_encode`）→ 设备回显一致。**并命中/修复真实缺陷**：`chr_ctrl_access` 仅拷前 8 字节 → 越界读栈垃圾 → 富 TLV 快照（66B）被 ATT error 13 拒绝；修复为整包拷贝（≤`S3P_STATE_MAX_LEN`）+ 超长拒绝；重刷后设备回显 `host STATE status=0 flags=0x3e rev=1 tools=2`，`ble_client PASS`（sha `0d8e8de4…`）。先前 23B 的"PASS"实为 UB 巧合。**仍未交付**：生产 host（托盘）。
+- **插件插入影响评估（2026-09-25，用户要求"无伤插入"）**：新增 [插件插入影响评估](./StickS3_OpenCode_插件插入影响评估.md)——9 项接触点风险清单 + 无伤插入程序（备份→隔离预演→最小插入→重启→2 消息验证→回滚）。**加固**：`refreshState` 包 try/catch，异常不再冒泡 OpenCode 事件总线/定时器（+回归测试；`bun test` **108/108**）。**未改动 `tui.json`**（保持未插入）。**隔离预演已执行**：独立 HOME/XDG 下插件加载无错、`bridge.json` 写出、`/v1/health alive:true`、`/v1/state/stream` 正常、日志 0 ERROR/WARN；**唯 #1（replace 槽位真实渲染）仍需真实会话验证**。
+
+### 2026-09-25 收工登记（Sisyphus）——插件真实插入 + S4.1b 真机验证 + activeError 缺陷修复 + 旧机路径迁移
+
+**背景**：新机 WSL 链路重建后，桥接插件首次在本机 OpenCode **真实注册并重启生效**；随后完成 S4.1b 真机验证、命中并修复一处仅真机才暴露的缺陷，并收尾旧机（shiwenc）路径迁移。
+
+- **插件真实插入 + 决定性验证 PASS（2026-09-25）**：`~/.config/opencode/tui.json` 追加本机插件路径（保留 `oh-my-openagent`），重启后 `bridge.json` 写出、`/v1/health alive:true`、`tuiEpoch` 一致。**连续多条消息落在同一会话、无新建/跳空** → `session_prompt` replace 槽位修复在真实 TUI 下**通过**（判据同 2026-09-23）。
+- **S4.1b 真实 TUI 验证 PASS（2026-09-25）**：`GET /v1/state/stream` 在真实插件下产出完整精简快照（identity/bind/status/tools/todos/model/usage/cost/freshness 全字段，`authoritativeReadOk:true`）。
+- **命中并修复真实缺陷（T 类，选择性 TDD）**：`stateRead.deriveActiveError` 原**倒扫任意历史消息**取 error 名 → 历史一旦出错，会话空闲后 `deriveStatus` 会误判为 `error`（设备误显 ERROR）且 `errorCode` 长期陈旧。**修复**：仅取**最近一条 assistant 消息**的 error（其后成功即清除）。新增回归用例 2 条（先红后绿）；`bun test` **110/110**、`tsc --noEmit` exit 0。
+- **旧机路径迁移收尾（代码/脚本/配置）**：`C:\Temp\ESP32-S3M5` / `/mnt/c/Temp/ESP32-S3M5` / `shiwenc` → 本机 `C:\Users\home\esp32-s3-m5` / WSL `home`。含 `tools/{make_lessons_ppt.py,q03_run.py,USB刷写清单.md}`、`plugin/spike/project/*.json`；`dayu` skill 的 `provenance/extraction-notes.md` 来源路径同步。历史/证据文件按纪律**保持原样**（不改写历史）。
+- **推送前敏感审查**：全仓无 token/密钥；设备真实 MAC 在新增文档中按项目惯例**掩码为 `<MAC>`**（此前不在历史中）。
+- **测试**：`plugin` `bun test` **110/110**、`tsc --noEmit` exit 0；`tools/` 单测 **190 OK**。
+
+**未竟 / 下一步**：S4.2 生产 host（托盘订阅 `state/stream` + 真实快照合并 → BLE 下发，**待范围确认**）；S4.7d（待 host 常驻服务 + IPC-02 冻结）；M3 Q04 语料采音暂存；C10 待冻结项（中文字体 / 长按阈值 / 息屏细节 / LVGL）。
+
