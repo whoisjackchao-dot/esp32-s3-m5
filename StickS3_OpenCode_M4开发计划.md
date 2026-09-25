@@ -153,3 +153,4 @@
 - **明确未交付**：常驻 host 吸收 voice 路径、控制端点、托盘接线、HIL（见下方进度）。
 - **进度（2026-09-25）**：设计冻结 → [S4.7d 与 IPC-02 LLD **已批准** D1—D5](./StickS3_OpenCode_S4.7d与IPC-02_LLD草案.md)。**纯逻辑 Slice 1 已实现**：`host/src/retry_store.{h,c}`（重试资格/TTL；`retry_store_test` **13/0**）+ `build_retry_store_test.cmd`。
 - **关键前置（LLD §7 补充发现）**：现音频/追加路径为**一次性 `voice_append.exe`**（退出即失），故"内存持有音频/正文"要求**常驻 host 吸收该 voice 路径** —— S4.7d 真正前置，归下一切片。
+- **吸收进展①（2026-09-25 续）**：常驻 `state_host` 已具备 **BLE 音频/事件接收 + 会话重组 + s3pcap 落盘**（订阅 `CTRL/AUDIO/EVENT`；`s3p_reasm`；`STICKS3_CAPTURE_DIR`；`STICKS3_HOST_TRIGGER` 仅供测试触发）。HIL：触发会话 → `BEGIN/END rec=1 frames=500 samples=480000 rc=0` → `rec_1.s3pcap`（75,332 B）；**STATE 推送无回归**（连续 rev 递增）。**仍未吸收**：Opus 解码 / ASR / `draft.append` 与 `retry_store` 接线（下一片）。
