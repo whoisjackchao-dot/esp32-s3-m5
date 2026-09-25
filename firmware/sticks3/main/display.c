@@ -197,51 +197,57 @@ static void render_page(int page, bool connected, bool recording) {
     fill(C_BLACK);
     if (page == 0) {
         draw_title("STATUS");
-        draw_str(4, 44, "BLE:", C_WHITE, 2);
-        draw_str(4 + 4 * 16, 48, connected ? "CONN" : "ADV", C_YELLOW, 1);
-        draw_str(4, 74, "HOST:", C_WHITE, 2);
-        draw_str(4 + 5 * 16, 78, valid ? "OK" : "--", C_YELLOW, 1);
+        draw_str(4, 40, "BLE:", C_WHITE, 2);
+        draw_str(4, 60, connected ? "CONN" : "ADV", C_YELLOW, 2);
+        draw_str(4, 80, "HOST:", C_WHITE, 2);
+        draw_str(4, 100, valid ? "OK" : "--", C_YELLOW, 2);
         const char *t = valid ? status_text(s->status) : "NO STATE";
         const int tn = (int)strlen(t);
         int sz = 23;
         if (tn > 0 && sz * tn > DISP_W - 8) {
             sz = (DISP_W - 8) / tn;
         }
-        draw_str_px((DISP_W - tn * sz) / 2, 124, t, C_BLUE3399, sz);
+        draw_str_px((DISP_W - tn * sz) / 2, 130, t, C_BLUE3399, sz);
         if (recording) {
-            draw_str(4, 156, "REC", C_RED, 2);
+            draw_str(4, 186, "REC", C_RED, 2);
         }
         if (valid && (s->flags & S3P_FLAG_EXPIRED) != 0u) {
             draw_str(100, 22, "STALE", C_YELLOW, 1);
         }
     } else if (page == 1) {
         draw_title("TASK");
-        if (valid && s->title[0] != '\0') {
-            snprintf(b, sizeof(b), "%.8s", s->title);
-        } else {
-            snprintf(b, sizeof(b), "-");
-        }
-        draw_str(4, 44, b, C_WHITE, 2);
+        draw_str(4, 30, "TITLE:", C_WHITE, 2);
+        snprintf(b, sizeof(b), "%.8s", (valid && s->title[0] != '\0') ? s->title : "-");
+        draw_str(4, 50, b, C_WHITE, 2);
+        draw_str(4, 70, "PROJ:", C_WHITE, 2);
         snprintf(b, sizeof(b), "%.8s", (valid && s->project[0] != '\0') ? s->project : "-");
-        draw_str(4, 74, b, C_WHITE, 2);
+        draw_str(4, 90, b, C_WHITE, 2);
+        draw_str(4, 110, "TOOL:", C_WHITE, 2);
         if (valid) {
-            snprintf(b, sizeof(b), "T%u D%u/%u", (unsigned)s->tool_count,
-                     (unsigned)s->todo_completed, (unsigned)s->todo_total);
+            snprintf(b, sizeof(b), "%u", (unsigned)s->tool_count);
         } else {
             snprintf(b, sizeof(b), "-");
         }
-        draw_str(4, 108, b, C_WHITE, 2);
+        draw_str(4, 130, b, C_WHITE, 2);
+        draw_str(4, 150, "TODO:", C_WHITE, 2);
+        if (valid) {
+            snprintf(b, sizeof(b), "%u/%u", (unsigned)s->todo_completed,
+                     (unsigned)s->todo_total);
+        } else {
+            snprintf(b, sizeof(b), "-");
+        }
+        draw_str(4, 170, b, C_WHITE, 2);
     } else {
         draw_title("USAGE");
         draw_str(4, 40, "IN:", C_WHITE, 2);
         u32_text(b, sizeof(b), valid ? s->tokens_input : S3P_STATE_UNKNOWN);
-        draw_str(16, 62, b, C_YELLOW, 1);
-        draw_str(4, 82, "OUT:", C_WHITE, 2);
+        draw_str(4, 60, b, C_YELLOW, 2);
+        draw_str(4, 80, "OUT:", C_WHITE, 2);
         u32_text(b, sizeof(b), valid ? s->tokens_output : S3P_STATE_UNKNOWN);
-        draw_str(16, 104, b, C_YELLOW, 1);
-        draw_str(4, 124, "COST:", C_WHITE, 2);
+        draw_str(4, 100, b, C_YELLOW, 2);
+        draw_str(4, 120, "COST:", C_WHITE, 2);
         u32_text(b, sizeof(b), valid ? s->cost_milli : S3P_STATE_UNKNOWN);
-        draw_str(16, 146, b, C_YELLOW, 1);
+        draw_str(4, 140, b, C_YELLOW, 2);
     }
     snprintf(b, sizeof(b), "%d/3", page + 1);
     draw_str(DISP_W - 24, DISP_H - 12, b, C_WHITE, 1);
