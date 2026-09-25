@@ -16,6 +16,7 @@
 #include "ble_gatt.h"
 #include "button.h"
 #include "display.h"
+#include "s3p_state.h"
 
 static const char *TAG = "sticks3";
 
@@ -99,6 +100,37 @@ static void audio_path_evidence(void) {
     }
 }
 
+/* S4.4：进入「等待/错误」各响一次；录音中延后；过期快照不响（设计 §310 / M4 不变量）。 */
+static void alert_task(void *arg) {
+    (void)arg;
+    uint8_t prev = (uint8_t)S3P_STATUS_UNKNOWN;
+    bool pending = false;
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        const bool valid = ble_gatt_host_state_valid();
+        const uint8_t flags = valid ? ble_gatt_host_flags() : 0u;
+        const uint8_t st = valid ? ble_gatt_host_status() : (uint8_t)S3P_STATUS_UNKNOWN;
+        const bool expired = (flags & S3P_FLAG_EXPIRED) != 0u;
+        const bool alert =
+            valid && !expired && (st == S3P_STATUS_WAITING || st == S3P_STATUS_ERROR);
+        const bool was_alert = (prev == S3P_STATUS_WAITING || prev == S3P_STATUS_ERROR);
+        if (alert && !was_alert) {
+            if (audio_session_active()) {
+                pending = true;
+            } else {
+                audio_capture_beep();
+            }
+        }
+        if (pending && !audio_session_active()) {
+            if (alert) {
+                audio_capture_beep();
+            }
+            pending = false;
+        }
+        prev = st;
+    }
+}
+
 void app_main(void) {
     esp_chip_info_t chip;
     esp_chip_info(&chip);
@@ -155,6 +187,9 @@ void app_main(void) {
     /* S4.4 自检：开机响一声（后续按等待/错误事件触发，每事件一次） */
     if (audio_capture_beep() != ESP_OK) {
         ESP_LOGW(TAG, "提示音自检失败（I2S TX / es8311）");
+    }
+    if (xTaskCreate(alert_task, "alert", 4096, NULL, 3, NULL) != pdPASS) {
+        ESP_LOGW(TAG, "提示音任务创建失败");
     }
     ESP_LOGI(TAG, "free heap        : %lu", (unsigned long)esp_get_free_heap_size());
 

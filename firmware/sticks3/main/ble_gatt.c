@@ -112,6 +112,10 @@ uint8_t ble_gatt_host_status(void) {
     return s_state_valid ? s_state_status : (uint8_t)S3P_STATUS_UNKNOWN;
 }
 
+uint8_t ble_gatt_host_flags(void) {
+    return s_state_valid ? s_state_flags : 0u;
+}
+
 static esp_err_t notify_value(uint16_t val_handle, bool subscribed,
                               const uint8_t *data, size_t len) {
     if (s_conn_handle == BLE_HS_CONN_HANDLE_NONE || !subscribed) {

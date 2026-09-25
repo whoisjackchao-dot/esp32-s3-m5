@@ -31,6 +31,8 @@ bool ble_gatt_audio_subscribed(void);
 bool ble_gatt_host_state_valid(void);
 bool ble_gatt_host_busy(void);
 uint8_t ble_gatt_host_status(void);
+/* STATE 位图（含 S3P_FLAG_EXPIRED）；无效时为 0。 */
+uint8_t ble_gatt_host_flags(void);
 
 /* 设备→主机通知（Audio Notify / Device Event 特征）。
  * 未连接或未订阅时返回 ESP_ERR_INVALID_STATE，不静默丢弃调用。 */
