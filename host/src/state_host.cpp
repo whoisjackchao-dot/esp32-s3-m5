@@ -16,11 +16,16 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <mutex>
 #include <string>
+#include <thread>
 
 #pragma comment(lib, "winhttp.lib")
 
 extern "C" {
+#include "append_ctl.h"
+#include "asr_adapter.h"
+#include "asr_transport.h"
 #include "retry_store.h"
 #include "s3p_proto.h"
 #include "s3p_reasm.h"
@@ -60,6 +65,11 @@ static bool g_session_captured = false;
 static retry_store g_retry;
 static uint8_t g_held[256 * 1024 + 64];
 static size_t g_held_len = 0;
+static std::mutex g_voice_mu;
+static std::string g_bridge_url;
+static std::string g_bridge_token;
+static std::string g_epoch_name;
+static std::string g_session_id;
 
 static void say(const char* msg) {
     std::printf("[state_host] %s\n", msg);
@@ -122,6 +132,8 @@ static uint64_t parse_addr_from_id(const winrt::hstring& id) {
     return n == 12 ? addr : 0;
 }
 
+static void host_voice_worker(std::string cap);
+
 static void on_audio(GattCharacteristic const&, GattValueChangedEventArgs const& args) {
     auto buf = args.CharacteristicValue();
     const uint8_t* p = buf.data();
@@ -180,6 +192,10 @@ static void on_audio(GattCharacteristic const&, GattValueChangedEventArgs const&
                 std::printf("[state_host] retry: audio held (%zu B) can_recognize=%d\n", g_held_len,
                             (int)retry_can_recognize(&g_retry, GetTickCount()));
                 std::fflush(stdout);
+                if (std::getenv("STICKS3_HOST_VOICE") != nullptr && g_held_len > 12) {
+                    std::string cap((const char*)g_held, g_held_len);
+                    std::thread(host_voice_worker, cap).detach();
+                }
             }
             const char* capdir = std::getenv("STICKS3_CAPTURE_DIR");
             std::printf("[state_host] session END frames=%lu samples=%lu rc=%d\n",
@@ -297,6 +313,192 @@ static bool deadline_hit(DWORD deadline) {
     return deadline != 0 && GetTickCount() >= deadline;
 }
 
+static std::string exe_dir() {
+    wchar_t buf[MAX_PATH];
+    const DWORD n = GetModuleFileNameW(nullptr, buf, MAX_PATH);
+    if (n == 0) return ".";
+    const std::wstring w(buf, n);
+    const auto pos = w.find_last_of(L"\\/");
+    return winrt::to_string(pos == std::wstring::npos ? w : w.substr(0, pos));
+}
+
+static bool run_decode(const std::string& in, const std::string& out) {
+    const std::string script = exe_dir() + "\\..\\..\\tools\\decode_capture.py";
+    std::string cmd = "cmd.exe /c python \"" + script + "\" \"" + in + "\" \"" + out + "\"";
+    STARTUPINFOA si{};
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    PROCESS_INFORMATION pi{};
+    if (!CreateProcessA(nullptr, cmd.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr,
+                        nullptr, &si, &pi)) {
+        return false;
+    }
+    WaitForSingleObject(pi.hProcess, 60000);
+    DWORD code = 1;
+    GetExitCodeProcess(pi.hProcess, &code);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return code == 0;
+}
+
+static std::string rand_op_id() {
+    static const char* hex = "0123456789abcdef";
+    std::string id = "op_";
+    for (int i = 0; i < 29; ++i) {
+        id += hex[std::rand() & 0xF];
+    }
+    return id;
+}
+
+static bool append_post(const std::string& url, const std::string& token, const std::string& body,
+                        unsigned long& status_out, std::string& resp_out) {
+    std::string host;
+    int port = 0;
+    if (!parse_http_url(url, host, port)) return false;
+    HINTERNET ses = WinHttpOpen(L"sticks3-state-host/0.1", WINHTTP_ACCESS_TYPE_NO_PROXY, nullptr,
+                                nullptr, 0);
+    HINTERNET conn = ses ? WinHttpConnect(ses, std::wstring(host.begin(), host.end()).c_str(),
+                                          (INTERNET_PORT)port, 0)
+                         : nullptr;
+    HINTERNET req = conn ? WinHttpOpenRequest(conn, L"POST", L"/v1/draft/append", nullptr,
+                                              WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0)
+                         : nullptr;
+    bool ok = false;
+    if (req) {
+        DWORD t = 10000;
+        WinHttpSetOption(req, WINHTTP_OPTION_RECEIVE_TIMEOUT, &t, sizeof(t));
+        const std::wstring hdr = L"Content-Type: application/json\r\nAuthorization: Bearer " +
+                                 std::wstring(token.begin(), token.end()) + L"\r\n";
+        if (WinHttpSendRequest(req, hdr.c_str(), (DWORD)hdr.size(), (LPVOID)body.data(),
+                               (DWORD)body.size(), (DWORD)body.size(), 0) &&
+            WinHttpReceiveResponse(req, nullptr)) {
+            DWORD sc = 0, sz = sizeof(sc);
+            WinHttpQueryHeaders(req, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                                WINHTTP_HEADER_NAME_BY_INDEX, &sc, &sz, WINHTTP_NO_HEADER_INDEX);
+            status_out = sc;
+            for (;;) {
+                DWORD av = 0;
+                if (!WinHttpQueryDataAvailable(req, &av) || av == 0) break;
+                std::string c(av, '\0');
+                DWORD rd = 0;
+                if (!WinHttpReadData(req, c.data(), av, &rd)) break;
+                resp_out.append(c, 0, rd);
+            }
+            ok = true;
+        }
+    }
+    if (req) WinHttpCloseHandle(req);
+    if (conn) WinHttpCloseHandle(conn);
+    if (ses) WinHttpCloseHandle(ses);
+    return ok;
+}
+
+static void host_voice_worker(std::string cap) {
+    char tmp[MAX_PATH];
+    if (GetTempPathA(MAX_PATH, tmp) == 0) return;
+    const std::string s3p = std::string(tmp) + "sticks3_host_rec.s3pcap";
+    const std::string wav = std::string(tmp) + "sticks3_host_rec.wav";
+    {
+        FILE* f = std::fopen(s3p.c_str(), "wb");
+        if (!f) {
+            say("voice: temp write failed");
+            return;
+        }
+        std::fwrite(cap.data(), 1, cap.size(), f);
+        std::fclose(f);
+    }
+    if (!run_decode(s3p, wav)) {
+        say("voice: decode failed");
+        std::remove(s3p.c_str());
+        return;
+    }
+    std::printf("[state_host] voice: decoded -> wav\n");
+    std::fflush(stdout);
+    const char* key = std::getenv("STICKS3_ASR_KEY");
+    if (key == nullptr || *key == '\0') {
+        say("voice: ASR skipped (no STICKS3_ASR_KEY)");
+        std::remove(s3p.c_str());
+        std::remove(wav.c_str());
+        return;
+    }
+    std::string wavb;
+    if (!read_file(wav, wavb) || wavb.empty()) {
+        say("voice: wav read failed");
+        std::remove(s3p.c_str());
+        return;
+    }
+    std::string body(wavb.size() + 4096, '\0');
+    const size_t bl = asr_multipart_build((const uint8_t*)wavb.data(), wavb.size(),
+                                          (uint8_t*)body.data(), body.size());
+    if (bl == 0) {
+        say("voice: multipart failed");
+        std::remove(s3p.c_str());
+        std::remove(wav.c_str());
+        return;
+    }
+    body.resize(bl);
+    asr_http_req_t req;
+    memset(&req, 0, sizeof(req));
+    req.host = "open.bigmodel.cn";
+    req.port = 443;
+    req.secure = 1;
+    req.path = "/api/paas/v4/audio/transcriptions";
+    req.method = "POST";
+    req.api_key = key;
+    req.content_type = asr_content_type();
+    req.timeout_ms = 20000;
+    std::string resp(65536, '\0');
+    int hs = 0;
+    const asr_status_t st = asr_http_post(&req, (const uint8_t*)body.data(), bl, resp.data(),
+                                          resp.size(), &hs);
+    SecureZeroMemory(body.data(), body.size());
+    if (st != ASR_OK) {
+        std::printf("[state_host] voice: ASR transport failed (%d)\n", (int)st);
+        std::fflush(stdout);
+        std::remove(s3p.c_str());
+        std::remove(wav.c_str());
+        return;
+    }
+    char text[4096];
+    const asr_status_t cls = asr_classify(hs, resp.c_str(), strlen(resp.c_str()), text, sizeof(text));
+    if (cls != ASR_OK) {
+        std::printf("[state_host] voice: ASR class %d (no text)\n", (int)cls);
+        std::fflush(stdout);
+        std::remove(s3p.c_str());
+        std::remove(wav.c_str());
+        return;
+    }
+    std::string sess;
+    {
+        std::lock_guard<std::mutex> lk(g_voice_mu);
+        sess = g_session_id;
+        retry_store_note(&g_retry, RETRY_FAILED, true, true, sess.c_str(), !sess.empty(),
+                         GetTickCount());
+    }
+    const std::string opid = rand_op_id();
+    char jb[16384];
+    const size_t jl = append_build_request(g_epoch_name.c_str(), sess.c_str(), opid.c_str(), text, jb,
+                                           sizeof(jb));
+    unsigned long sc = 0;
+    std::string rb;
+    const bool posted = jl != 0 && append_post(g_bridge_url, g_bridge_token, std::string(jb, jl), sc, rb);
+    if (posted) {
+        const append_outcome oc = append_classify((int)sc, rb.data(), rb.size());
+        std::lock_guard<std::mutex> lk(g_voice_mu);
+        const retry_status rs = oc == APPEND_APPLIED     ? RETRY_APPLIED
+                                : oc == APPEND_UNCERTAIN ? RETRY_UNCERTAIN
+                                                         : RETRY_REJECTED;
+        retry_store_note(&g_retry, rs, true, true, sess.c_str(), !sess.empty(), GetTickCount());
+        std::printf("[state_host] voice: append outcome=%d http=%lu\n", (int)oc, sc);
+    } else {
+        say("voice: append post failed");
+    }
+    std::fflush(stdout);
+    std::remove(s3p.c_str());
+    std::remove(wav.c_str());
+}
+
 static int run_host() {
     retry_store_init(&g_retry);
     const char* sec = std::getenv("STICKS3_HOST_SECONDS");
@@ -311,6 +513,13 @@ static int run_host() {
             say("bridge.json unavailable; retry");
             Sleep(2000);
             continue;
+        }
+        {
+            std::string ep;
+            std::lock_guard<std::mutex> lk(g_voice_mu);
+            g_bridge_url = url;
+            g_bridge_token = token;
+            if (tray::json_string(js, "tuiEpoch", ep)) g_epoch_name = ep;
         }
         std::string host;
         int port = 0;
@@ -393,6 +602,17 @@ static int run_host() {
                         if (ev.name != "snapshot" || ev.data.empty()) continue;
                         br03_snapshot in;
                         if (!bridge::parse_snapshot(ev.data, in)) continue;
+                        {
+                            const std::string sk = "\"sessionID\":\"";
+                            const size_t k = ev.data.find(sk);
+                            const size_t e = k == std::string::npos
+                                                 ? std::string::npos
+                                                 : ev.data.find('"', k + sk.size());
+                            if (e != std::string::npos) {
+                                std::lock_guard<std::mutex> lk(g_voice_mu);
+                                g_session_id = ev.data.substr(k + sk.size(), e - (k + sk.size()));
+                            }
+                        }
                         if (in.revision == g_last_rev) continue;
                         if (push_state(ctrl, in)) {
                             g_last_rev = in.revision;
