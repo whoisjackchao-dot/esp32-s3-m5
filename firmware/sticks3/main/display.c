@@ -264,7 +264,7 @@ static void render_page(int page, bool connected, bool recording) {
         draw_str(4 + 3 * 16, 208, b, C_WHITE, 1);
     }
     snprintf(b, sizeof(b), "%d/3", page + 1);
-    draw_str(DISP_W - 24, DISP_H - 12, b, C_WHITE, 1);
+    draw_str(DISP_W - 24, DISP_H - 12 - Y_SHIFT, b, C_WHITE, 1);
 }
 
 static volatile bool s_page_next;

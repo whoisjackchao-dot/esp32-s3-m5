@@ -10,6 +10,7 @@ import sys
 from PIL import Image
 
 W, H, SCALE = 135, 240, 3
+Y_SHIFT = 8
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 PURPLE = (205, 156, 255)  # C_PURPLE 0xCA9F -> #CD9CFF
@@ -30,6 +31,7 @@ def draw_char(px, g, x, y, ch, color, scale):
     o = ord(ch)
     if o >= 128 or o >= len(g):
         return
+    y += Y_SHIFT
     rows = g[o]
     for row in range(8):
         bits = rows[row]
@@ -51,6 +53,7 @@ def draw_str(px, g, x, y, s, color, scale):
 
 def draw_str_px(px, g, x, y, s, color, size):
     """按目标像素高 size 渲染（最近邻放缩 8x8 字形，支持非 8 倍数字号）。"""
+    y += Y_SHIFT
     for ch in s:
         o = ord(ch)
         if o < 128 and o < len(g):
@@ -101,7 +104,9 @@ def page(px, g, idx):
         draw_str(px, g, 4, 100, "2345", YELLOW, 2)
         draw_str(px, g, 4, 120, "COST:", WHITE, 2)
         draw_str(px, g, 4, 140, "1234", YELLOW, 2)
-    draw_str(px, g, W - 24, H - 12, "%d/3" % (idx + 1), WHITE, 1)
+    draw_str(px, g, 4, 204, "BAT", BLUE, 2)
+    draw_str(px, g, 4 + 3 * 16, 208, "87%", WHITE, 1)
+    draw_str(px, g, W - 24, H - 12 - Y_SHIFT, "%d/3" % (idx + 1), WHITE, 1)
 
 
 def main():
