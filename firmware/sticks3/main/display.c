@@ -41,6 +41,7 @@ static uint16_t s_fb[DISP_W * DISP_H];
 /* RGB565 */
 #define C_BLACK  0x0000
 #define C_PURPLE 0xCA9F /* 淡紫 #CC99FF */
+#define C_BLUE3399 0x327F /* #3399FF */
 #define C_WHITE  0xFFFF
 #define C_RED    0xF800
 #define C_GREEN  0x07E0
@@ -78,6 +79,34 @@ static void draw_str(int x, int y, const char *s, uint16_t color, int scale) {
     while (*s) {
         draw_char8(x, y, *s++, color, scale);
         x += 8 * scale;
+    }
+}
+
+/* 任意像素高字号（最近邻放缩 8x8 字形），与 tools/gen_screen_mock.py 一致。 */
+static void draw_char_px(int x, int y, char c, uint16_t color, int size) {
+    const uint8_t o = (uint8_t)c;
+    if (o >= 128u) {
+        return;
+    }
+    for (int row = 0; row < size; ++row) {
+        const uint8_t bits = (uint8_t)font8x8_basic[o][row * 8 / size];
+        for (int col = 0; col < size; ++col) {
+            if ((bits & (uint8_t)(1u << (col * 8 / size))) == 0) {
+                continue;
+            }
+            const int px = x + col;
+            const int py = y + row;
+            if (px >= 0 && px < DISP_W && py >= 0 && py < DISP_H) {
+                s_fb[py * DISP_W + px] = color;
+            }
+        }
+    }
+}
+
+static void draw_str_px(int x, int y, const char *s, uint16_t color, int size) {
+    while (*s != '\0') {
+        draw_char_px(x, y, *s++, color, size);
+        x += size;
     }
 }
 
@@ -162,11 +191,19 @@ static void render_page(int page, bool connected, bool recording) {
     fill(C_BLACK);
     if (page == 0) {
         draw_title("STATUS");
-        draw_str(4, 44, connected ? "BLE:CONN" : "BLE:ADV", C_WHITE, 2);
-        draw_str(4, 74, valid ? "HOST:OK" : "HOST:--", C_WHITE, 2);
-        draw_str(4, 108, valid ? status_text(s->status) : "NO STATE", C_WHITE, 2);
+        draw_str(4, 44, "BLE:", C_WHITE, 2);
+        draw_str(4 + 4 * 16, 48, connected ? "CONN" : "ADV", C_YELLOW, 1);
+        draw_str(4, 74, "HOST:", C_WHITE, 2);
+        draw_str(4 + 5 * 16, 78, valid ? "OK" : "--", C_YELLOW, 1);
+        const char *t = valid ? status_text(s->status) : "NO STATE";
+        const int tn = (int)strlen(t);
+        int sz = 23;
+        if (tn > 0 && sz * tn > DISP_W - 8) {
+            sz = (DISP_W - 8) / tn;
+        }
+        draw_str_px((DISP_W - tn * sz) / 2, 124, t, C_BLUE3399, sz);
         if (recording) {
-            draw_str(4, 138, "REC", C_RED, 2);
+            draw_str(4, 156, "REC", C_RED, 2);
         }
         if (valid && (s->flags & S3P_FLAG_EXPIRED) != 0u) {
             draw_str(100, 22, "STALE", C_YELLOW, 1);
@@ -190,12 +227,15 @@ static void render_page(int page, bool connected, bool recording) {
         draw_str(4, 108, b, C_WHITE, 2);
     } else {
         draw_title("USAGE");
+        draw_str(4, 40, "IN:", C_WHITE, 2);
         u32_text(b, sizeof(b), valid ? s->tokens_input : S3P_STATE_UNKNOWN);
-        draw_str(4, 44, b, C_WHITE, 2);
+        draw_str(16, 62, b, C_YELLOW, 1);
+        draw_str(4, 82, "OUT:", C_WHITE, 2);
         u32_text(b, sizeof(b), valid ? s->tokens_output : S3P_STATE_UNKNOWN);
-        draw_str(4, 74, b, C_WHITE, 2);
+        draw_str(16, 104, b, C_YELLOW, 1);
+        draw_str(4, 124, "COST:", C_WHITE, 2);
         u32_text(b, sizeof(b), valid ? s->cost_milli : S3P_STATE_UNKNOWN);
-        draw_str(4, 108, b, C_WHITE, 2);
+        draw_str(16, 146, b, C_YELLOW, 1);
     }
     snprintf(b, sizeof(b), "%d/3", page + 1);
     draw_str(DISP_W - 24, DISP_H - 12, b, C_WHITE, 1);
