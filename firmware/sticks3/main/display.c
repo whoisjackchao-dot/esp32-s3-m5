@@ -219,13 +219,6 @@ static void render_page(int page, bool connected, bool recording) {
         if (valid && (s->flags & S3P_FLAG_EXPIRED) != 0u) {
             draw_str(100, 22, "STALE", C_YELLOW, 1);
         }
-        if (s_bat_valid) {
-            snprintf(b, sizeof(b), "BAT %d%%", s_bat_pct);
-            draw_str(4, 204, b, C_BLUE3399, 2);
-            if (s_bat_charging) {
-                draw_str(DISP_W - 32, 208, "CHG", C_BLUE3399, 1);
-            }
-        }
     } else if (page == 1) {
         draw_title("TASK");
         draw_str(4, 30, "TITLE:", C_WHITE, 2);
@@ -260,6 +253,14 @@ static void render_page(int page, bool connected, bool recording) {
         draw_str(4, 120, "COST:", C_WHITE, 2);
         u32_text(b, sizeof(b), valid ? s->cost_milli : S3P_STATE_UNKNOWN);
         draw_str(4, 140, b, C_YELLOW, 2);
+    }
+    /* 电量三页常驻（S4.5） */
+    if (s_bat_valid) {
+        snprintf(b, sizeof(b), "BAT %d%%", s_bat_pct);
+        draw_str(4, 204, b, C_BLUE3399, 2);
+        if (s_bat_charging) {
+            draw_str(DISP_W - 32, 208, "CHG", C_BLUE3399, 1);
+        }
     }
     snprintf(b, sizeof(b), "%d/3", page + 1);
     draw_str(DISP_W - 24, DISP_H - 12, b, C_WHITE, 1);
