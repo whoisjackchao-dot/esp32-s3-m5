@@ -66,11 +66,13 @@ static void power_task(void *arg) {
 
 static void on_button_press(void) {
     note_activity();
+    display_set_rec_hold(true);
     audio_session_request_start();
 }
 
 static void on_button_release(void) {
     note_activity();
+    display_set_rec_hold(false);
     audio_session_request_stop();
 }
 

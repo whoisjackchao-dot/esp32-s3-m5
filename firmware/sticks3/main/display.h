@@ -20,3 +20,6 @@ void display_backlight(bool on);
 
 /* 电池电量（M4-S4.5）：由电源任务周期更新，状态页底部显示 */
 void display_set_battery(int pct, bool charging);
+
+/* 录音键按住状态（M4-S4.5 录音画面/无主机提示用） */
+void display_set_rec_hold(bool held);

@@ -106,7 +106,7 @@ static void draw_char_px(int x, int y, char c, uint16_t color, int size) {
             const int px = x + col;
             const int py = y + row;
             if (px >= 0 && px < DISP_W && py >= 0 && py < DISP_H) {
-                s_fb[py * DISP_W + px] = color;
+                s_fb[py * DISP_W + px] = pxswap(color);
             }
         }
     }
@@ -197,13 +197,37 @@ static int s_bat_pct;
 static bool s_bat_charging;
 static bool s_bat_valid;
 static volatile bool s_bat_dirty;
+static volatile bool s_rec_hold;
+static TickType_t s_rec_since;
+
+void display_set_rec_hold(bool held) {
+    s_rec_hold = held;
+}
+
+static void render_rec(bool session_active) {
+    const int sz = 44;
+    draw_str_px((DISP_W - 3 * sz) / 2, 70, "REC", C_RED, sz);
+    char b[24];
+    if (session_active) {
+        const uint32_t secs =
+            (uint32_t)((xTaskGetTickCount() - s_rec_since) * portTICK_PERIOD_MS / 1000u);
+        snprintf(b, sizeof(b), "%lus", (unsigned long)secs);
+        draw_str((DISP_W - (int)strlen(b) * 16) / 2, 140, b, C_WHITE, 2);
+    } else if (!ble_gatt_connected()) {
+        draw_str((DISP_W - 7 * 16) / 2, 140, "NO HOST", C_YELLOW, 2);
+    } else {
+        draw_str((DISP_W - 5 * 16) / 2, 140, "START", C_YELLOW, 2);
+    }
+}
 
 static void render_page(int page, bool connected, bool recording) {
     const bool valid = ble_gatt_host_state_valid();
     const s3p_state_snapshot *s = ble_gatt_host_snapshot();
     char b[40];
     fill(C_BLACK);
-    if (page == 0) {
+    if (recording || s_rec_hold) {
+        render_rec(recording);
+    } else if (page == 0) {
         draw_title("STATUS");
         draw_str(4, 40, "BLE:", C_WHITE, 2);
         draw_str(4, 60, connected ? "CONN" : "ADV", C_YELLOW, 2);
@@ -288,6 +312,7 @@ static void display_task(void *arg) {
     (void)arg;
     bool last_conn = false;
     bool last_rec = false;
+    bool last_hold = false;
     bool last_valid = false;
     uint8_t last_status = 0xFFu;
     bool first = true;
@@ -301,14 +326,26 @@ static void display_task(void *arg) {
         s_page_next = false;
         const bool bat = s_bat_dirty;
         s_bat_dirty = false;
+        const bool hold = s_rec_hold;
         if (key) {
             page = (page + 1) % 3;
         }
+        if (rec && !last_rec) {
+            s_rec_since = xTaskGetTickCount();
+        }
+        static TickType_t last_rec_tick;
+        bool rec_tick = false;
+        if (rec && (xTaskGetTickCount() - last_rec_tick) >= pdMS_TO_TICKS(1000)) {
+            last_rec_tick = xTaskGetTickCount();
+            rec_tick = true;
+        }
         if (key || bat || first || conn != last_conn || rec != last_rec ||
-            valid != last_valid || status != last_status) {
+            valid != last_valid || status != last_status || hold != last_hold ||
+            rec_tick) {
             render_page(page, conn, rec);
             last_conn = conn;
             last_rec = rec;
+            last_hold = hold;
             last_valid = valid;
             last_status = status;
             first = false;
