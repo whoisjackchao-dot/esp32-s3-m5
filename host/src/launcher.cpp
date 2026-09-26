@@ -161,17 +161,32 @@ bool start_child(Child* child, const std::wstring& dir, const std::wstring& logs
         log_line("child log open failed for %ls (err=%lu)", child->name.c_str(), GetLastError());
         return false;
     }
-    STARTUPINFOW si{};
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESTDHANDLES;
-    si.hStdInput = INVALID_HANDLE_VALUE;
-    si.hStdOutput = child->log;
-    si.hStdError = child->log;
+    STARTUPINFOEXW si{};
+    si.StartupInfo.cb = sizeof(si);
+    si.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    si.StartupInfo.hStdInput = INVALID_HANDLE_VALUE;
+    si.StartupInfo.hStdOutput = child->log;
+    si.StartupInfo.hStdError = child->log;
+    SIZE_T attr_size = 0;
+    InitializeProcThreadAttributeList(nullptr, 1, 0, &attr_size);
+    std::vector<char> attr_buf(attr_size);
+    si.lpAttributeList = reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(attr_buf.data());
+    bool attr_ok = InitializeProcThreadAttributeList(si.lpAttributeList, 1, 0, &attr_size) != 0;
+    HANDLE inherit_list[1] = {child->log};
+    if (attr_ok) {
+        attr_ok = UpdateProcThreadAttribute(si.lpAttributeList, 0,
+                                            PROC_THREAD_ATTRIBUTE_HANDLE_LIST, inherit_list,
+                                            sizeof(inherit_list), nullptr, nullptr) != 0;
+    }
     std::wstring cmdline = L"\"" + exe + L"\"";
     std::vector<wchar_t> mutable_cmd(cmdline.begin(), cmdline.end());
     mutable_cmd.push_back(L'\0');
-    const BOOL ok = CreateProcessW(exe.c_str(), mutable_cmd.data(), nullptr, nullptr, TRUE,
-                                   CREATE_NO_WINDOW, nullptr, dir.c_str(), &si, &child->pi);
+    const DWORD flags = CREATE_NO_WINDOW | (attr_ok ? EXTENDED_STARTUPINFO_PRESENT : 0);
+    const BOOL ok = CreateProcessW(exe.c_str(), mutable_cmd.data(), nullptr, nullptr, TRUE, flags,
+                                   nullptr, dir.c_str(), &si.StartupInfo, &child->pi);
+    if (attr_ok) {
+        DeleteProcThreadAttributeList(si.lpAttributeList);
+    }
     if (!ok) {
         log_line("child start failed: %ls (err=%lu)", child->name.c_str(), GetLastError());
         CloseHandle(child->log);
