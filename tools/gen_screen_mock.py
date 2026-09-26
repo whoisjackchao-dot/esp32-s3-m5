@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""屏幕模拟器（M4/S4.3 评审用）：按 135x240 复现固件 display.c 的三页渲染，放大输出 PNG。
+"""屏幕模拟器（M4/S4.3 评审用）：按 135x240 复现固件 display.c 的三页渲染 + 录音画面，放大输出 PNG。
 用法：python gen_screen_mock.py <font8x8_basic.h> <out.png>
 例：python gen_screen_mock.py firmware/sticks3/main/font8x8_basic.h screen_mock.png
 """
@@ -109,16 +109,29 @@ def page(px, g, idx):
     draw_str(px, g, W - 24, H - 12 - Y_SHIFT, "%d/3" % (idx + 1), WHITE, 1)
 
 
+def rec(px, g):
+    draw_str_px(px, g, (W - 3 * 44) // 2, 70, "REC", RED, 44)
+    draw_str(px, g, (W - 3 * 16) // 2, 140, "12s", WHITE, 2)
+    draw_str(px, g, 4, 204, "BAT", BLUE, 2)
+    draw_str(px, g, 4 + 3 * 16, 208, "87%", WHITE, 1)
+    draw_str(px, g, W - 24, H - 12 - Y_SHIFT, "1/3", WHITE, 1)
+
+
 def main():
     if len(sys.argv) != 3:
         print(__doc__)
         return 2
     g = load_font(sys.argv[1])
     pad = 12
-    out = Image.new("RGB", (3 * W * SCALE + 4 * pad, H * SCALE + 2 * pad), (40, 40, 40))
-    for i in range(3):
+    panels = 4
+    out = Image.new("RGB", (panels * W * SCALE + (panels + 1) * pad, H * SCALE + 2 * pad),
+                    (40, 40, 40))
+    for i in range(panels):
         p = Image.new("RGB", (W, H), BLACK)
-        page(p.load(), g, i)
+        if i < 3:
+            page(p.load(), g, i)
+        else:
+            rec(p.load(), g)
         big = p.resize((W * SCALE, H * SCALE), Image.NEAREST)
         out.paste(big, (pad + i * (W * SCALE + pad), pad))
     out.save(sys.argv[2])
