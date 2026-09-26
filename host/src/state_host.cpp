@@ -6,6 +6,7 @@
 // 测试用：环境变量 STICKS3_HOST_SECONDS=N 令其在 N 秒后自行退出。
 #include <winsock2.h>
 #include <windows.h>
+#include <aclapi.h>
 #include <winhttp.h>
 
 #include <winrt/Windows.Foundation.h>
@@ -666,6 +667,34 @@ static void http_thread() {
     WSACleanup();
 }
 
+static bool restrict_descriptor_acl(const std::string& path) {
+    HANDLE token = nullptr;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) return false;
+    char buf[512] = {0};
+    DWORD len = 0;
+    const bool got = GetTokenInformation(token, TokenUser, buf, sizeof(buf), &len) != 0;
+    CloseHandle(token);
+    if (!got) return false;
+    const TOKEN_USER* tu = reinterpret_cast<const TOKEN_USER*>(buf);
+    const SID* sid = reinterpret_cast<const SID*>(tu->User.Sid);
+    EXPLICIT_ACCESSW ea{};
+    ea.grfAccessPermissions = GENERIC_ALL;
+    ea.grfAccessMode = SET_ACCESS;
+    ea.grfInheritance = NO_INHERITANCE;
+    ea.Trustee.TrusteeForm = TRUSTEE_IS_SID;
+    ea.Trustee.TrusteeType = TRUSTEE_IS_USER;
+    ea.Trustee.ptstrName = const_cast<LPWSTR>(reinterpret_cast<LPCWSTR>(sid));
+    PACL dacl = nullptr;
+    if (SetEntriesInAclW(1, &ea, nullptr, &dacl) != ERROR_SUCCESS) return false;
+    std::wstring wpath(path.begin(), path.end());
+    const DWORD r = SetNamedSecurityInfoW(wpath.data(), SE_FILE_OBJECT,
+                                          DACL_SECURITY_INFORMATION |
+                                              PROTECTED_DACL_SECURITY_INFORMATION,
+                                          nullptr, nullptr, dacl, nullptr);
+    LocalFree(dacl);
+    return r == ERROR_SUCCESS;
+}
+
 static void write_host_descriptor() {
     const char* lad = std::getenv("LOCALAPPDATA");
     if (lad == nullptr) return;
@@ -679,6 +708,11 @@ static void write_host_descriptor() {
     if (f != nullptr) {
         std::fwrite(js, 1, std::strlen(js), f);
         std::fclose(f);
+        if (restrict_descriptor_acl(path)) {
+            std::printf("[state_host] descriptor ACL -> current user only\n");
+        } else {
+            std::printf("[state_host] WARN descriptor ACL not restricted\n");
+        }
         std::printf("[state_host] descriptor -> %s\n", path.c_str());
         std::fflush(stdout);
     }

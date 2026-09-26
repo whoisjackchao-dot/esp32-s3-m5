@@ -148,7 +148,7 @@
 | 1 | `launcher.exe` 最小件（单实例 + 依序拉起 + 退出收尾 + 纯 ASCII `.cmd`） | ✅ 完成并验证（另收紧句柄继承 `HANDLE_LIST`） |
 | 2 | 进程监督（崩溃重启 + 退避）与日志（D7） | ✅ 完成并验证（**轮转路径**亦实测） |
 | 3 | 按 D4 停止语义落地；按 D5 处理端口契约 | ✅ D4=a 经 **Job Object** 落地；D5 契约已 v1.1，launcher 解析 `bridge.json` 并**下传 `STICKS3_BRIDGE_JSON`** |
-| **3b** | **D8：`host.json` 显式当前用户 ACL + token 复用 bridge token**（**本人草案原漏列，此处补上**） | ⏳ **未实现**——需改 `state_host.cpp` |
+| **3b** | **D8：`host.json` 显式当前用户 ACL + token 复用 bridge token**（**本人草案原漏列，此处补上**） | 🟡 **D8(a) ACL 已实现并验证**（`icacls` 仅当前用户一条 ACE，`PROTECTED_DACL` 剥离继承）；**D8(b) token 复用待做**（时序坑见下） |
 | 4 | HIL（真实设备端到端；含"关 host 后重开""端口被占""tray 与 host 各自退出"） | 🟡 **真实设备端到端已过**（`ble connected + subscribed` → `push #re` 递增）；端口占用 / `tray` 单独退出 / 退避封顶与重置路径**未验** |
 | 5 | 若 D1 含 B/C：另起 M08 LLD | 不适用（D1=A） |
 
