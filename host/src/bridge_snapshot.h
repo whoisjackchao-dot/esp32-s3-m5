@@ -16,6 +16,7 @@ extern "C" {
 #include "s3p_state.h"
 #include "state_merge.h"
 }
+#include "cost_scale.h"
 
 namespace bridge {
 
@@ -36,6 +37,18 @@ inline uint32_t avail_number(const winrt::Windows::Data::Json::JsonObject& paren
     const JsonObject a = parent.GetNamedObject(key);
     const std::wstring kind = a.HasKey(L"kind") ? std::wstring(a.GetNamedString(L"kind")) : L"";
     if (kind == L"known" && a.HasKey(L"value")) return (uint32_t)a.GetNamedNumber(L"value");
+    if (kind == L"not_reported") return S3P_STATE_NOT_REPORTED;
+    return missing;
+}
+
+// `{kind,value}` 可用性包装 → cost 毫单位：known 时 ×1000 取整；not_reported 取哨兵；其余 missing。
+inline uint32_t avail_cost_milli(const winrt::Windows::Data::Json::JsonObject& parent,
+                                 const wchar_t* key, uint32_t missing) {
+    using namespace winrt::Windows::Data::Json;
+    if (!parent.HasKey(key)) return missing;
+    const JsonObject a = parent.GetNamedObject(key);
+    const std::wstring kind = a.HasKey(L"kind") ? std::wstring(a.GetNamedString(L"kind")) : L"";
+    if (kind == L"known" && a.HasKey(L"value")) return cost_to_milli(a.GetNamedNumber(L"value"));
     if (kind == L"not_reported") return S3P_STATE_NOT_REPORTED;
     return missing;
 }
@@ -115,7 +128,7 @@ inline bool parse_snapshot(const std::string& json, br03_snapshot& out) {
             b.tokens_input = avail_number(us, L"input", S3P_STATE_UNKNOWN);
             b.tokens_output = avail_number(us, L"output", S3P_STATE_UNKNOWN);
         }
-        b.cost_milli = avail_number(o, L"cost", S3P_STATE_UNKNOWN);
+        b.cost_milli = avail_cost_milli(o, L"cost", S3P_STATE_UNKNOWN);
         static std::string s_project, s_title, s_model;
         bool hp = false, ht = false, hm = false;
         s_project = avail_string(o, L"project", &hp);
