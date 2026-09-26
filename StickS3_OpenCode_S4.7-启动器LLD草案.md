@@ -141,12 +141,18 @@
 > 现成判据原文（供 D9 直接挂靠）：`UI-01`「首次启动、设备配对、Key设置、连接、退出 → **普通用户可完成，不需要常驻管理员；可见错误和退出入口**」、`SEC-06`「启动失败/托盘退出/插件卸载 → 属于本项目的监听/线程/连接清理，**现有OpenCode任务和其他插件不被杀死**」、`REL-01`「按交付 README 构建/安装 → 构建产物可用且版本锁定，文档命令可复现；**不修改全局安全策略**」、`REL-03`（卸载清理按用户选择）、`REL-05`「后台仅 OpenCode 部分故障，BLE 仍可用 → **不将蓝牙连接等同于 OpenCode 就绪**」、`E2E-01`（真板+托盘+WSL绑定会话+真实 GLM 全链路）。
 
 ## 5. 拟实现切片（**批准后**才动，仅为便于估工）
-1. **Slice 0**：冻结 D1—D9（ADR + 契约更新）。
-2. **Slice 1**：若 D1=A → `launcher.exe` 最小件：单实例 + 依序拉起 + 退出收尾 + 纯 ASCII `.cmd` 构建（沿用 vcvars 回退）。
-3. **Slice 2**：进程监督（崩溃重启、退避）与日志（按 D7）。
-4. **Slice 3**：按 D4 的停止语义落地；按 D5 处理端口契约。
-5. **Slice 4**：HIL（含"关 host 后重开""端口被占""tray 与 host 各自退出"）+ 证据。
-6. 若 D1 含 B/C：另起 M08 相关 LLD（WSL 启动握手仍未定，不在本草案内解决）。
+
+| # | 切片 | 状态（2026-09-26） |
+| --- | --- | --- |
+| 0 | 冻结 D1—D9（ADR + 契约更新） | ✅ 完成（ADR-2026-09-26；M1 契约 **v1.1**） |
+| 1 | `launcher.exe` 最小件（单实例 + 依序拉起 + 退出收尾 + 纯 ASCII `.cmd`） | ✅ 完成并验证（另收紧句柄继承 `HANDLE_LIST`） |
+| 2 | 进程监督（崩溃重启 + 退避）与日志（D7） | ✅ 完成并验证（**轮转路径**亦实测） |
+| 3 | 按 D4 停止语义落地；按 D5 处理端口契约 | ✅ D4=a 经 **Job Object** 落地；D5 契约已 v1.1，launcher 解析 `bridge.json` 并**下传 `STICKS3_BRIDGE_JSON`** |
+| **3b** | **D8：`host.json` 显式当前用户 ACL + token 复用 bridge token**（**本人草案原漏列，此处补上**） | ⏳ **未实现**——需改 `state_host.cpp` |
+| 4 | HIL（真实设备端到端；含"关 host 后重开""端口被占""tray 与 host 各自退出"） | 🟡 **真实设备端到端已过**（`ble connected + subscribed` → `push #re` 递增）；端口占用 / `tray` 单独退出 / 退避封顶与重置路径**未验** |
+| 5 | 若 D1 含 B/C：另起 M08 LLD | 不适用（D1=A） |
+
+**D8 实现注记（供接手者，避免踩坑）**：`state_host.cpp` 的 `write_host_descriptor()`（**L669-685**）在 `run_host()` 内**先于**读取 `bridge.json` 执行——此刻 `g_host_token` 仍是默认值 `"sticks3-host"`（**L690-691**），而 bridge token 要到 **L714** 才从 `bridge.json` 取到。因此实现 D8(b) **必须处理该时序**：①在拿到 bridge token 后**改写** `host.json` 并同步控制端点鉴权所用变量；或②把描述符写出**后移**到 bridge 读取之后（注意 `host.json` 的"描述符先就绪"语义是 launcher 的等待判据，后移会改变 `descriptor ready` 的时序）。ACL 侧用 `SetNamedSecurityInfoW` + `PROTECTED_DACL_SECURITY_INFORMATION` 仅放当前用户 SID（`host.json` 路径为 ASCII，可直接转宽串；`<aclapi.h>`）。
 
 ## 6. 不覆盖
 - WSL/OpenCode 的**启动握手细节**（`HLD §11.3 L431` 仍待定）——若 D1 选 B/C，另立 LLD。
