@@ -452,6 +452,8 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **未验证（诚实登记）**：**本 ADR/LLD 只冻结设计，实现尚未开工**——按 LLD §5 切片（Slice 1 起）推进，每个 Slice 需 HIL 证据方可声称通过。
 - **Slice 1 已实现并本机冒烟通过（2026-09-26）**：新增 `host/src/launcher.cpp` + `host/src/build_launcher.cmd`（**未改既有文件**）；构建 `BUILD_OK`、`launcher.exe` 182,272 B。核对：**单实例**（第二实例 `already running - exiting`）、**依序拉起**（删 `host.json` 后 `descriptor ready after 250ms`，host 日志 235725 → tray 235726）、**日志落盘**（`%LOCALAPPDATA%\sticks3\logs\{state_host,tray}-*.log`）、**退出经 Job 收尾**（`cleanup ok (no leftover)`）、**描述符发现**（`\\wsl.localhost\<distro>\…`，发行版可配）。修复 2 处宽窄串格式化缺陷。**未实现**：崩溃重启（Slice 2）、轮转触发路径、真实设备 E2E。证据：[evidence/M4/2026-09-26-S4.7-启动器Slice1-2.md](./evidence/M4/2026-09-26-S4.7-启动器Slice1-2.md)。
 - **Slice 2 完成并验证（2026-09-26 同日）**：`launcher.cpp` 增**崩溃重启 + 指数退避**（`min(1s<<(n-1), 30s)`；退出前存活 ≥60s 则重置；**重启复用同一日志**防爆炸）。实测：杀 `state_host`(336) → 自动重启 **3204**，日志 `restart #1 in 1000ms`；**轮转路径真跑**（预置 1,258,291 B → `rotate: … -> state_host.1.log`，`rotated=True`）。**未验**：退避封顶/重置路径、`tray` 单独重启、真实设备 E2E。
+- **真实设备端到端 ✅（2026-09-26 同日）**：经 `launcher.exe` 单命令拉起，`state_host` 日志实证全链路——`control endpoint on 127.0.0.1:45910` → **`ble connected + subscribed (CTRL/AUDIO/EVENT)`** → `subscribe /v1/state/stream` → **`push #1/#2/#3 rev=1935…1937`**（STATE 持续下发）；退出 `cleanup ok`。**未验**：退避封顶/重置路径、`tray` 单独重启。
+- **⚠ 未排入切片的已批项**：**D8（`host.json` 显式当前用户 ACL + token 复用 bridge token）** 已批准但**尚未实现**，且我起草的 LLD §5 切片表里**漏列了它**（属我草案的缺口）——实现需改 `state_host.cpp`。
 - **证据**：[evidence/M4/2026-09-26-S4.5-USB策略.md](./evidence/M4/2026-09-26-S4.5-USB策略.md)。
 - **证据**：[evidence/M4/2026-09-26-S4.5-电量读数.md](./evidence/M4/2026-09-26-S4.5-电量读数.md)、[evidence/M4/2026-09-26-S4.3-UI布局校准.md](./evidence/M4/2026-09-26-S4.3-UI布局校准.md)。
 
