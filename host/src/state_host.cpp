@@ -37,6 +37,7 @@ extern "C" {
 #include "state_merge.h"
 }
 #include "bridge_snapshot.h"
+#include "http_accept_policy.h"
 #include "sse_parse.h"
 #include "tray_parse.h"
 
@@ -564,6 +565,9 @@ static bool bearer_ok(const char* req) {
 }
 
 static void http_handle_conn(SOCKET c) {
+    const DWORD io_timeout_ms = 5000; /* Windows 用 DWORD 毫秒（非 POSIX timeval）*/
+    setsockopt(c, SOL_SOCKET, SO_RCVTIMEO, (const char*)&io_timeout_ms, sizeof(io_timeout_ms));
+    setsockopt(c, SOL_SOCKET, SO_SNDTIMEO, (const char*)&io_timeout_ms, sizeof(io_timeout_ms));
     char buf[4096];
     const int n = recv(c, buf, (int)sizeof(buf) - 1, 0);
     if (n <= 0) return;
@@ -660,7 +664,18 @@ static void http_thread() {
     std::fflush(stdout);
     while (InterlockedCompareExchange(&g_http_stop, 0, 0) == 0) {
         SOCKET c = accept(s, nullptr, nullptr);
-        if (c == INVALID_SOCKET) break;
+        if (c == INVALID_SOCKET) {
+            const int err = WSAGetLastError();
+            if (http_accept_error_is_fatal(err)) {
+                std::printf("[state_host] control accept fatal err=%d; stopping\n", err);
+                std::fflush(stdout);
+                break;
+            }
+            std::printf("[state_host] control accept transient err=%d; continue\n", err);
+            std::fflush(stdout);
+            Sleep(50);
+            continue;
+        }
         http_handle_conn(c);
         closesocket(c);
     }
