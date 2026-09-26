@@ -24,6 +24,7 @@ static const char *TAG = "sticks3";
 /* S4.5 息屏：60s 无活动关背光（保连）；按键/新等待错误/录音可唤醒；心跳不唤醒。 */
 #define IDLE_OFF_MS 60000u
 static volatile TickType_t s_last_activity;
+static volatile bool s_usb_present;
 
 static void note_activity(void) {
     s_last_activity = xTaskGetTickCount();
@@ -45,9 +46,15 @@ static void power_task(void *arg) {
                 display_set_battery(pct, chg);
                 ESP_LOGI(TAG, "battery %umV %d%% chg=%d", (unsigned)mv, pct, (int)chg);
             }
+            bool usb = false;
+            if (pm1_power(&usb) == ESP_OK && usb != s_usb_present) {
+                s_usb_present = usb;
+                ESP_LOGI(TAG, "power usb=%d", (int)usb);
+            }
         }
         const TickType_t idle_for = xTaskGetTickCount() - s_last_activity;
-        const bool want_on = (idle_for < pdMS_TO_TICKS(IDLE_OFF_MS)) || audio_session_active();
+        const bool want_on = s_usb_present || (idle_for < pdMS_TO_TICKS(IDLE_OFF_MS)) ||
+                             audio_session_active();
         if (want_on != bl_on) {
             bl_on = want_on;
             display_backlight(want_on);

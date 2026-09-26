@@ -18,8 +18,10 @@ static const char *TAG = "pm1";
 #define PM1_REG_GPIO_FUNC 0x16
 #define PM1_REG_GPIO_IN   0x12
 #define PM1_REG_VBAT_L    0x22
+#define PM1_REG_VIN_L     0x24
 
 #define PM1_BIT_CHG_STAT 0x01 /* GPIO0：充电状态输入（低=充电） */
+#define PM1_BIT_PWR_VIN 0x01  /* PWR_SRC(0x04) bit0：5VIN（USB 输入）有效 */
 
 #define PM1_BIT_ES8311 0x08 /* GPIO3：SPK 功放使能（官方 PinMap PYG3_SPK_Pulse） */
 #define PM1_BIT_L3B    0x04 /* GPIO2：L3B 供电轨（LCD/MIC/SPK；ES8311 所在） */
@@ -145,5 +147,27 @@ esp_err_t pm1_battery(uint16_t *mv, int *pct, bool *charging) {
                                                   pdMS_TO_TICKS(100)) == ESP_OK) &&
                     ((in & PM1_BIT_CHG_STAT) == 0);
     }
+    return ESP_OK;
+}
+
+esp_err_t pm1_power(bool *usb_present) {
+    if (usb_present == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    const uint8_t src_reg = PM1_REG_PWR_SRC;
+    uint8_t src = 0;
+    if (i2c_master_write_read_device(I2C_NUM_0, PM1_I2C_ADDR, &src_reg, 1, &src, 1,
+                                     pdMS_TO_TICKS(100)) != ESP_OK) {
+        return ESP_FAIL;
+    }
+    bool usb = (src & PM1_BIT_PWR_VIN) != 0;
+    const uint8_t vin_reg = PM1_REG_VIN_L;
+    uint8_t vin[2] = {0};
+    if (i2c_master_write_read_device(I2C_NUM_0, PM1_I2C_ADDR, &vin_reg, 1, vin, 2,
+                                     pdMS_TO_TICKS(100)) == ESP_OK) {
+        const uint16_t vin_mv = (uint16_t)(vin[0] | ((uint16_t)vin[1] << 8));
+        usb = usb && (vin_mv > 4000);
+    }
+    *usb_present = usb;
     return ESP_OK;
 }

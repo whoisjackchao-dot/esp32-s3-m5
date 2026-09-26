@@ -28,3 +28,6 @@ esp_err_t pm1_l3b_lcd(bool on);
 /* 电池：VBAT(reg 0x22, mV) + 百分比（官方 M5Unified 曲线）+ 充电状态(GPIO0 低=充电)。
  * 任一 out 可传 NULL；I2C 读失败返回非 ESP_OK。 */
 esp_err_t pm1_battery(uint16_t *mv, int *pct, bool *charging);
+
+/* USB（5VIN）在位：PWR_SRC 0x04 bit0，且可读到时要求 VIN 0x24/0x25 > 4000mV */
+esp_err_t pm1_power(bool *usb_present);
