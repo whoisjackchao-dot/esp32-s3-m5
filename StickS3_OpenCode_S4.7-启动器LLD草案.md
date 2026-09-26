@@ -152,7 +152,7 @@
 | 4 | HIL（真实设备端到端；含"关 host 后重开""端口被占""tray 与 host 各自退出"） | 🟡 **真实设备端到端已过**（`ble connected + subscribed` → `push #re` 递增）；端口占用 / `tray` 单独退出 / 退避封顶与重置路径**未验** |
 | 5 | 若 D1 含 B/C：另起 M08 LLD | 不适用（D1=A） |
 
-**D8 实现注记（供接手者，避免踩坑）**：`state_host.cpp` 的 `write_host_descriptor()`（**L669-685**）在 `run_host()` 内**先于**读取 `bridge.json` 执行——此刻 `g_host_token` 仍是默认值 `"sticks3-host"`（**L690-691**），而 bridge token 要到 **L714** 才从 `bridge.json` 取到。因此实现 D8(b) **必须处理该时序**：①在拿到 bridge token 后**改写** `host.json` 并同步控制端点鉴权所用变量；或②把描述符写出**后移**到 bridge 读取之后（注意 `host.json` 的"描述符先就绪"语义是 launcher 的等待判据，后移会改变 `descriptor ready` 的时序）。ACL 侧用 `SetNamedSecurityInfoW` + `PROTECTED_DACL_SECURITY_INFORMATION` 仅放当前用户 SID（`host.json` 路径为 ASCII，可直接转宽串；`<aclapi.h>`）。
+**D8 实现注记（已按此实现，保留备查）**：`state_host.cpp` 的 `write_host_descriptor()` 在 `run_host()` 内**先于**读取 `bridge.json` 执行——首写时 `g_host_token` 仍是默认 `"sticks3-host"`，bridge token 要到主循环里才取到。**实际采用方案**：主循环取得 bridge token 后，若未显式设置 `STICKS3_HOST_TOKEN`，则把 `g_host_token` 换成 bridge token 并**重写 `host.json`**（复用 ACL 路径）；`bearer_ok()` 的比较加 `g_voice_mu` 锁以消除与 http 线程的竞争。ACL 侧用 `SetNamedSecurityInfoW` + `PROTECTED_DACL_SECURITY_INFORMATION` 仅放当前用户 SID。验证见 [证据 §11](evidence/M4/2026-09-26-S4.7-启动器Slice1-2.md)。
 
 ## 6. 不覆盖
 - WSL/OpenCode 的**启动握手细节**（`HLD §11.3 L431` 仍待定）——若 D1 选 B/C，另立 LLD。
