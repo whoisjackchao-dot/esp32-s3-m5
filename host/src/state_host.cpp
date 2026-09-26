@@ -559,6 +559,7 @@ static bool bearer_ok(const char* req) {
     p += std::strlen("Authorization: Bearer ");
     const char* e = std::strstr(p, "\r\n");
     const size_t n = e ? (size_t)(e - p) : std::strlen(p);
+    std::lock_guard<std::mutex> lk(g_voice_mu);
     return g_host_token.size() == n && std::memcmp(p, g_host_token.data(), n) == 0;
 }
 
@@ -747,6 +748,21 @@ static int run_host() {
             g_bridge_url = url;
             g_bridge_token = token;
             if (tray::json_string(js, "tuiEpoch", ep)) g_epoch_name = ep;
+        }
+        if (std::getenv("STICKS3_HOST_TOKEN") == nullptr) {
+            bool changed = false;
+            {
+                std::lock_guard<std::mutex> lk(g_voice_mu);
+                if (g_host_token != token) {
+                    g_host_token = token;
+                    changed = true;
+                }
+            }
+            if (changed) {
+                write_host_descriptor();
+                std::printf("[state_host] control token -> bridge token (epoch)\n");
+                std::fflush(stdout);
+            }
         }
         std::string host;
         int port = 0;

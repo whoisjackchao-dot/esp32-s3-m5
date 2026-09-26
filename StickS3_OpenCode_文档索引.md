@@ -456,6 +456,7 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **边界场景补验 ✅（2026-09-26 同日）**：①**控制端口 45910 被占** → `control endpoint bind failed` 后 host **继续运行**且 **BLE/STATE 链路不受影响**（`push rev=2003…2005`）；②**`tray` 单独被杀 → 自动重启**（17380→3044，复用同一日志）。**仍未验**：退避封顶（30s）/ 60s 稳定重置路径。复跑脚本：`tools/launcher_edge.ps1`。
 - **退避封顶与稳定重置 ✅（2026-09-26 同日，最后一条未验路径闭合）**：实测递增 `1000→2000→4000→8000→16000`；**封顶 `#6/#7 = 30000ms`**；**60 s 稳定后重置**（`alive=86750ms → restart #1 in 1000ms`）。复跑脚本：`tools/launcher_backoff.ps1`。→ **启动器监督行为全项验证完毕**；仅剩 **D8 未实现**。
 - **D8(a) 已实现并验证（2026-09-26 同日）**：`state_host.cpp` 写出 `host.json` 后加 `restrict_descriptor_acl()`（当前用户 SID → `SetEntriesInAclW` → `SetNamedSecurityInfoW` + `PROTECTED_DACL` 剥离继承）。`BUILD_OK`（560,640 B）；`icacls` 实证 **仅 `DESKTOP-F7NTBB2\home:(F)` 一条 ACE**，无 `Users`/`Everyone`/继承项。**D8(b)（token 复用 bridge token）仍未实现**（时序坑注记见 LLD §5 表 3b）。
+- **D8(b) 已实现并验证（2026-09-26 同日）**：`bearer_ok()` 加锁（变量可被主循环更新）；主循环取得 bridge token 后（未显式设 `STICKS3_HOST_TOKEN` 时）切换控制 token 并重写 `host.json`（复用 ACL 路径）。`BUILD_OK`（561,152 B）；实测 **`tokens_equal=True`、新 token `200`、旧默认 `401`**。→ **D8(a+b) 完成，启动器侧无未实现项**。
 - **⚠ 未排入切片的已批项**：**D8（`host.json` 显式当前用户 ACL + token 复用 bridge token）** 已批准但**尚未实现**，且我起草的 LLD §5 切片表里**漏列了它**（属我草案的缺口）——实现需改 `state_host.cpp`。
 - **证据**：[evidence/M4/2026-09-26-S4.5-USB策略.md](./evidence/M4/2026-09-26-S4.5-USB策略.md)。
 - **证据**：[evidence/M4/2026-09-26-S4.5-电量读数.md](./evidence/M4/2026-09-26-S4.5-电量读数.md)、[evidence/M4/2026-09-26-S4.3-UI布局校准.md](./evidence/M4/2026-09-26-S4.3-UI布局校准.md)。
