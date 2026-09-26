@@ -419,6 +419,6 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **UI 布局校准（用户逐条裁定，多轮）**：①电量**三页常驻**（移出逐页分支到公共区）；②`BAT` 16px、百分比/充电 8px **白**；③**全屏文本整体下移 8px（`Y_SHIFT`）**——用户判定顶部"缺字"实为**打印外壳遮挡**，**非显示缺陷**；④**页脚 `1/3` 锚点补偿 `Y_SHIFT`**（否则 236..243 越出 240 面板底部被裁）；⑤模拟器 `tools/gen_screen_mock.py` **同步**（沿用"S4.3 模拟器与固件布局必须一起改"教训）。
 - **测试/构建**：固件 `idf.py build` OK（`sticks3.bin 0xb45a0`，app 余 30%）；插件 `bun test` **111 pass / 1 skip**、`tsc` exit 0；`tools/` 190 OK；host 单测（state_merge/retry_store/append_ctl/sse_parse）全绿。
 - **刷写**：`flash-artifacts/` 更新 + `SHA256SUMS` 重算；本轮末固件 sha **`b62ac78e96dd0b62`**（`sticks3.bin`）。run 期间 `state_host.exe` 反复重启以配合刷机。
-- **待用户目视**：下移 8px 后是否完全避开外壳（不足则只需调 `Y_SHIFT` 单常量）。
+- **真机确认 ✅（2026-09-26）**：用户确认下移 8px 后**已完全避开外壳** → `Y_SHIFT=8` **冻结**。
 - **证据**：[evidence/M4/2026-09-26-S4.5-电量读数.md](./evidence/M4/2026-09-26-S4.5-电量读数.md)、[evidence/M4/2026-09-26-S4.3-UI布局校准.md](./evidence/M4/2026-09-26-S4.3-UI布局校准.md)。
 
