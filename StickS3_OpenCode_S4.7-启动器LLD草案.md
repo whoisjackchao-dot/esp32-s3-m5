@@ -20,6 +20,9 @@
 3. `tray.exe` 退出（WM_DESTROY → PostQuitMessage）**不会停止 `state_host.exe`**——两者今日互相独立，仅通过 `%LOCALAPPDATA%\sticks3\host.json` 单向发现端点。
 4. 无单实例保护：`state_host` 控制端口的 `bind` 失败时**只打印 `control endpoint bind failed` 并让该线程退出，进程继续运行**（端口 45910 冲突时会出现"跑着但控制面不可用"）。
 5. 无优雅停止路径：控制端点只有 `GET /v1/retry/status`、`POST /v1/retry/{recognize,append}`，**没有 shutdown**；也没有信号处理。
+6. **已批义务未实现（起草时新发现）**：`契约补充 C05`（2026-09-15 批准，cleanup-first）要求常驻进程在**锁屏**（L70）与**挂起/休眠**（L71）时取消并清理在途事务——原文「收到挂起通知即取消并清理…**即使未满5分钟也不继续旧事务**」。而 `tray.cpp` / `state_host.cpp` **均未订阅** `WM_WTSSessionNotification`，即**目前不实现该义务**。凡持有音频/正文内存的常驻进程（现为 `state_host`）都受其约束 → 启动器/生命周期设计须处置。
+7. 启动器**本身是承诺交付件**：`交付节点与完成定义.md L140`「固件源码、Windows主机源码、TUI插件/**启动器源码**及全部实际测试与fixture」、`L143`「README安装/配对/Key配置/**专用启动**/日常使用」→ 不是可选项。
+8. `可行性核查 L208`：「**未来启动器的安全IPC尚未实现验证**」——若 D1 选 B/C，安全 IPC 属未验证区。
 
 **约束（已批/已冻结，不得违反）**
 - `evidence …L4` 用户裁定：host 形态＝**独立常驻可执行**；「Windows 服务/托盘包装**另议**」。
@@ -72,14 +75,14 @@
 | # | 决策 | 选项/建议 | 影响 |
 | --- | --- | --- | --- |
 | **D1** | 启动器**范围** | A Windows 侧拉起器 / B M08 WSL+OpenCode 专用启动 / C 两者 | 决定后续全部工作量（B/C 需 WSL 启动握手，HLD 仍标待定） |
-| **D2** | **进程模型** | 独立 `launcher.exe`（推荐，贴合"独立常驻"裁定）/ tray 内嵌 / SCM 服务 | 与 `M4 §8 L137` 的"无日常管理员"冲突项需排除 |
+| **D2** | **进程模型** | 独立 `launcher.exe`（推荐，贴合"独立常驻"裁定）/ tray 内嵌 / SCM 服务 | **SCM 服务与两条已批判据冲突**：`REL-01`「**不修改全局安全策略**」、`UI-01`「**不需要常驻管理员**」；且 `evidence L4` 已把"Windows 服务"列为**另议** |
 | **D3** | **是否自启**、用何机制 | 不自启（手动）/ 登录启动项 / 任务计划 / 服务 | 仓库无依据，纯产品选择 |
 | **D4** | **停止/重启语义** | launcher 持有终止 / 新增 `POST /v1/shutdown` / 仅单实例锁 | 需 ADR（契约 C10） |
 | **D5** | **端口归属契约偏离** | 改实现符合 M1 契约 / 登记偏离并修订契约 | 触契约变更流程 |
 | **D6** | 配置发现**规范顺序**与发行版确定 | 环境变量优先 + `wsl -l -q` 探测 / 保持硬编码 + 文档化 | 影响多机可移植性 |
 | **D7** | 分离启动后的**日志去向** | 文件日志（路径/轮转）/ 保持 stdout / 事件日志 | 影响可诊断性 |
 | **D8** | `host.json` 的 **0600 ACL** 与 **token 取值** | 补 ACL + 改复用 bridge token / 明确登记现状可接受 | 安全项，C02/C11 相关 |
-| **D9** | **验收映射** | 复用 UI-01/SEC-06/REL-01 / 新增 launcher 专属用例 | 无现成 S4.7e 用例 |
+| **D9** | **验收映射** | 复用现有用例 / 新增 launcher 专属用例 | 无 S4.7e 故事卡；可直接挂靠的判据原文：`UI-01`「首次启动、设备配对、Key设置、连接、退出 → **普通用户可完成，不需要常驻管理员；可见错误和退出入口**」、`SEC-06`「启动失败/托盘退出/插件卸载 → 属于本项目的监听/线程/连接清理，**现有OpenCode任务和其他插件不被杀死**」、`REL-01`「按交付 README 构建/安装 → 构建产物可用且版本锁定，文档命令可复现；**不修改全局安全策略**」、`REL-03`（卸载清理按用户选择）、`REL-05`「后台仅 OpenCode 部分故障，BLE 仍可用 → **不将蓝牙连接等同于 OpenCode 就绪**」、`E2E-01`（真板+托盘+WSL绑定会话+真实 GLM 全链路） |
 
 ## 5. 拟实现切片（**批准后**才动，仅为便于估工）
 1. **Slice 0**：冻结 D1—D9（ADR + 契约更新）。
@@ -101,3 +104,7 @@
 - 桥接描述文件：`~/.local/share/sticks3-opencode/bridge.json`（`STICKS3_DESCRIPTOR_DIR` 可覆盖），随机 32 字节 token，`plugin/src/index.ts L48-62`。
 - 构建：`build_tray.cmd`（`/std:c++20`，无 WinRT，链 user32/shell32/winhttp）；`build_state_host.cmd`（需 `%LOCALAPPDATA%\sticks3\winrt-headers`，`/std:c++17 /await`，链 windowsapp/advapi32/bcrypt + 引用 `firmware/…/s3p_state.c`）；两者均 vcvars 回退 2022 BuildTools→2022 Community→2019 BuildTools，找不到即 `VCVARS_NOT_FOUND` 退出 1。
 - 现状 exe 体量（文档登记）：`tray.exe` 161,792 B（S4.7c）；`state_host.exe` 常驻无自退（生产）。
+- 承诺交付件：`交付节点与完成定义.md L140/L143` 把「启动器源码」与「README 专用启动」列入交付集。
+- 已批常驻义务：`契约补充 C05 L70/L71`（锁屏/休眠即取消并清理，即使未满 5 分钟）——当前未实现（见 §1 缺口 6）。
+- 相关验收判据原文：`测试矩阵 L147/L148/L154/L156/L158/L164`（SEC-06 / UI-01 / REL-01 / REL-03 / REL-05 / E2E-01）。
+- 安全 IPC 未验证：`可行性核查 L208`。
