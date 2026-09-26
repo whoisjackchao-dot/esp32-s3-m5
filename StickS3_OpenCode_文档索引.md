@@ -420,5 +420,16 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **测试/构建**：固件 `idf.py build` OK（`sticks3.bin 0xb45a0`，app 余 30%）；插件 `bun test` **111 pass / 1 skip**、`tsc` exit 0；`tools/` 190 OK；host 单测（state_merge/retry_store/append_ctl/sse_parse）全绿。
 - **刷写**：`flash-artifacts/` 更新 + `SHA256SUMS` 重算；本轮末固件 sha **`b62ac78e96dd0b62`**（`sticks3.bin`）。run 期间 `state_host.exe` 反复重启以配合刷机。
 - **真机确认 ✅（2026-09-26）**：用户确认下移 8px 后**已完全避开外壳** → `Y_SHIFT=8` **冻结**。
+
+### 2026-09-26 工作登记（Sisyphus）——S4.5 UI-04 USB 策略：实现完成，HIL ① 通过（②③④ 待用户观测）
+
+**用户裁定**：插电＝常亮；电池＝60s 息屏；**不做**亮度分级；**不上** BLE 电量。
+
+- **信号选型（含实测反证）**：查证 M5PM1 数据手册 + 官方 `m5stack/M5PM1` 驱动 + M5Unified → **`PWR_SRC (0x04)` bit0 = 5VIN(USB) 有效（位图）**，`VIN (0x24/0x25)` 为 USB 5V 电压；**PMIC 无"USB 在位"专用寄存器**。**实测反证 `CHG_STAT` 不可用**：80s 全寄存器转储显示——插电充电时 `0x12=0x14`（充电中），**停充瞬间翻成 `0x15`，而 `0x04` 仍 `0x05`、`VIN` 仍 5132mV（USB 仍在）**；即"插着但没在充电"会被充电位误判为电池。另：`M5PM1_Class::isCharging()` 是 M5Unified 的**永久桩函数**；IDF `usb_serial_jtag_is_connected()` 依 SOF，**接充电宝会误判未连接**，均不可用。
+- **实现（`552979b`）**：`pm1_power()`（`0x04` bit0 为主 + `VIN>4000mV` 为辅）；`power_task` 电量与电源来源每 10s 同批刷新、仅变化时打 `power usb=%d`；判据 `usb_present || 空闲<60s || 录音中`；**只改背光状态、不触碰录音会话、无重启路径**。
+- **HIL ① 通过（我自验）**：插电静置 **75s → 息屏 0 次**（改前 60s 必灭）；串口 `power usb=1`；sha `b4f0fbf0f540c557`。
+- **物理限制**：串口与供电同一根 USB → **纯电池态寄存器值无法串口观测**，`0x04` bit0 清零只能靠行为验证。
+- **②③④ 待用户屏幕观测**：②拔电静置 60s 应灭 ③按键应亮 ④**录音中拔插**不中断不重启。**未通过前本项不算验收完成**；S4.5 在 M4 计划表中**不标完成**。
+- **证据**：[evidence/M4/2026-09-26-S4.5-USB策略.md](./evidence/M4/2026-09-26-S4.5-USB策略.md)。
 - **证据**：[evidence/M4/2026-09-26-S4.5-电量读数.md](./evidence/M4/2026-09-26-S4.5-电量读数.md)、[evidence/M4/2026-09-26-S4.3-UI布局校准.md](./evidence/M4/2026-09-26-S4.3-UI布局校准.md)。
 
