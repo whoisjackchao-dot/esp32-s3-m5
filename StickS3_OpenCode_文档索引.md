@@ -454,6 +454,7 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **Slice 2 完成并验证（2026-09-26 同日）**：`launcher.cpp` 增**崩溃重启 + 指数退避**（`min(1s<<(n-1), 30s)`；退出前存活 ≥60s 则重置；**重启复用同一日志**防爆炸）。实测：杀 `state_host`(336) → 自动重启 **3204**，日志 `restart #1 in 1000ms`；**轮转路径真跑**（预置 1,258,291 B → `rotate: … -> state_host.1.log`，`rotated=True`）。**未验**：退避封顶/重置路径、`tray` 单独重启、真实设备 E2E。
 - **真实设备端到端 ✅（2026-09-26 同日）**：经 `launcher.exe` 单命令拉起，`state_host` 日志实证全链路——`control endpoint on 127.0.0.1:45910` → **`ble connected + subscribed (CTRL/AUDIO/EVENT)`** → `subscribe /v1/state/stream` → **`push #1/#2/#3 rev=1935…1937`**（STATE 持续下发）；退出 `cleanup ok`。**未验**：退避封顶/重置路径、`tray` 单独重启。
 - **边界场景补验 ✅（2026-09-26 同日）**：①**控制端口 45910 被占** → `control endpoint bind failed` 后 host **继续运行**且 **BLE/STATE 链路不受影响**（`push rev=2003…2005`）；②**`tray` 单独被杀 → 自动重启**（17380→3044，复用同一日志）。**仍未验**：退避封顶（30s）/ 60s 稳定重置路径。复跑脚本：`tools/launcher_edge.ps1`。
+- **退避封顶与稳定重置 ✅（2026-09-26 同日，最后一条未验路径闭合）**：实测递增 `1000→2000→4000→8000→16000`；**封顶 `#6/#7 = 30000ms`**；**60 s 稳定后重置**（`alive=86750ms → restart #1 in 1000ms`）。复跑脚本：`tools/launcher_backoff.ps1`。→ **启动器监督行为全项验证完毕**；仅剩 **D8 未实现**。
 - **⚠ 未排入切片的已批项**：**D8（`host.json` 显式当前用户 ACL + token 复用 bridge token）** 已批准但**尚未实现**，且我起草的 LLD §5 切片表里**漏列了它**（属我草案的缺口）——实现需改 `state_host.cpp`。
 - **证据**：[evidence/M4/2026-09-26-S4.5-USB策略.md](./evidence/M4/2026-09-26-S4.5-USB策略.md)。
 - **证据**：[evidence/M4/2026-09-26-S4.5-电量读数.md](./evidence/M4/2026-09-26-S4.5-电量读数.md)、[evidence/M4/2026-09-26-S4.3-UI布局校准.md](./evidence/M4/2026-09-26-S4.3-UI布局校准.md)。
