@@ -450,6 +450,7 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **明文排除**：SCM 服务化（与 `REL-01`「不修改全局安全策略」、`UI-01`「不需常驻管理员」冲突，且已被列为另议）、一次性引导、`tray` 内嵌持有、一切自启机制、设备侧改动、M6 安装布局。
 - **契约登记表同步**：`contracts/README.md` 更新——「中文字体/按键/息屏参数」行由"⏳ 未开始"更正为 **✅ 已定**（英文界面 / 长按 800ms·去抖 30ms / USB 常亮·电池 60s）；新增「启动器与桥接端口归属」行；并确立 **ADR 命名位置约定** `contracts/ADR-YYYY-MM-DD-<主题>.md`。
 - **未验证（诚实登记）**：**本 ADR/LLD 只冻结设计，实现尚未开工**——按 LLD §5 切片（Slice 1 起）推进，每个 Slice 需 HIL 证据方可声称通过。
+- **Slice 1 已实现并本机冒烟通过（2026-09-26）**：新增 `host/src/launcher.cpp` + `host/src/build_launcher.cmd`（**未改既有文件**）；构建 `BUILD_OK`、`launcher.exe` 182,272 B。核对：**单实例**（第二实例 `already running - exiting`）、**依序拉起**（删 `host.json` 后 `descriptor ready after 250ms`，host 日志 235725 → tray 235726）、**日志落盘**（`%LOCALAPPDATA%\sticks3\logs\{state_host,tray}-*.log`）、**退出经 Job 收尾**（`cleanup ok (no leftover)`）、**描述符发现**（`\\wsl.localhost\<distro>\…`，发行版可配）。修复 2 处宽窄串格式化缺陷。**未实现**：崩溃重启（Slice 2）、轮转触发路径、真实设备 E2E。证据：[evidence/M4/2026-09-26-S4.7-启动器Slice1.md](./evidence/M4/2026-09-26-S4.7-启动器Slice1.md)。
 - **证据**：[evidence/M4/2026-09-26-S4.5-USB策略.md](./evidence/M4/2026-09-26-S4.5-USB策略.md)。
 - **证据**：[evidence/M4/2026-09-26-S4.5-电量读数.md](./evidence/M4/2026-09-26-S4.5-电量读数.md)、[evidence/M4/2026-09-26-S4.3-UI布局校准.md](./evidence/M4/2026-09-26-S4.3-UI布局校准.md)。
 
