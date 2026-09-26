@@ -462,3 +462,16 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **证据**：[evidence/M4/2026-09-26-S4.5-USB策略.md](./evidence/M4/2026-09-26-S4.5-USB策略.md)。
 - **证据**：[evidence/M4/2026-09-26-S4.5-电量读数.md](./evidence/M4/2026-09-26-S4.5-电量读数.md)、[evidence/M4/2026-09-26-S4.3-UI布局校准.md](./evidence/M4/2026-09-26-S4.3-UI布局校准.md)。
 
+### 2026-09-27 工作登记（Sisyphus）—— M4 收口执行清单 #1：控制端点 accept 瞬时错误修复（✅ 完成）
+
+- **范围**：M4 收口执行清单 §6 #1（用户 2026-09-26 批准"修端点缺陷"，直指否决项②重试失败真因）。**本会话只推进这一个可演示行为增量**；#2/#3/#4/#5 未动。
+- **根因（已核）**：`http_thread` 的 accept 循环在无停止请求时**唯一**退出路径是 `accept()==INVALID_SOCKET`（`g_http_stop` 全仓从未被写入）→ 旧实现把任何 accept 错误都当终止 → 端点**永久失效**。
+- **变更**：新增 `host/src/http_accept_policy.h`（`http_accept_error_is_fatal`：仅 `WSAENOTSOCK/WSAEINVAL/WSAEOPNOTSUPP/WSAEAFNOSUPPORT` 致命）+ `http_accept_policy_test.c` + `build_http_accept_policy_test.cmd`；改 `state_host.cpp` accept 分支为 **记录 errno → 致命才 break，否则 `Sleep(50)`+continue**。**无冻结契约影响**。
+- **证据（本轮实测）**：单测 **RED（exit 1，5 failure）→ GREEN（exit 0）**；回归 `state_merge` 21/0、`retry_store` 13/0、`sse_parse` PASS、`append_ctl` 14/0；`build_state_host.cmd` **BUILD_OK**；HIL `tools/host_accept_resilience.ps1`——RST 风暴(800) 前后 **24 次 GET 全 200（PASS）**。证据：[evidence/M4/2026-09-27-控制端点accept瞬时错误修复.md](./evidence/M4/2026-09-27-控制端点accept瞬时错误修复.md)。
+- **诚实边界**：HIL **未复现**原始 accept 瞬时错误（Windows 对 RST backlog 连接仍返回可用套接字）；`continue` 分支由**单测**锁定，非 HIL 触发。
+- **独立复核（Oracle，只读）已采纳 1 处修正**：`WSAENETDOWN` 由"瞬时"改为**致命**（否则 Winsock 栈已死时会 ~20 Hz 永久重试+刷日志且端点静默不可用）；补断言 RED→GREEN（**8/8**）。并核对测试常量均为 `WSAE*`（非 errno.h）——复核所提"可能误用 errno 常量"隐患不成立。
+- **新发现（独立缺口）——✅ 已修复（2026-09-27，用户确认）**：端点**单线程 + 阻塞 `recv`（无超时）**——一条"连上不发"的连接即令 accept 循环**停摆**（端点仍在 `LISTENING` 却不再响应）。**与原始缺陷机制不同**（原始：监听套接字**消失**）。修法（Oracle 推荐最小）：`http_handle_conn` 设 `SO_RCVTIMEO`/`SO_SNDTIMEO`=`DWORD` **5000ms**。**RED→GREEN**：`recovered_after_ms -1(FAIL) → ≈4998ms(PASS)`（停顿连接全程未关）。详见证据 §5.2/§7/§8 与 [M4收口就绪核查.md](./M4收口就绪核查.md) §7。
+- **用户已裁定（2026-09-27）**：① 修 §5.2 ✅（已完成）；② 继续执行清单 **#2+#4**（cost 毫单位换算 + 固件日志，需刷机）与 **#3** 扩 `reasoning/cache` 字段（报表应走 ADR + 契约 v1.1）；③ **授权提交**本轮改动。
+- **下一步**：#2+#4（用量换算 + 串口可观测，需刷机）→ #3 的 ADR/契约 v1.1 + 显示扩字段。
+- **不要重复询问**：#1、§5.2 已批准并完成，无需再确认。
+
