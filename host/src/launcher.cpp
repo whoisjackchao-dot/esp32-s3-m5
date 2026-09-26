@@ -19,9 +19,16 @@ constexpr DWORD kDescriptorWaitMs = 10000;
 constexpr DWORD kPollMs = 250;
 constexpr ULONGLONG kRotateBytes = 1024ull * 1024ull;
 constexpr int kKeepRotated = 3;
+constexpr unsigned kBackoffBaseMs = 1000;
+constexpr unsigned kBackoffCapMs = 30000;
+constexpr ULONGLONG kStableResetMs = 60000;
 
 HANDLE g_job = nullptr;
 volatile LONG g_stop = 0;
+
+ULONGLONG now_ms() {
+    return GetTickCount64();
+}
 
 void log_line(const char* fmt, ...) {
     char buf[512];
@@ -146,7 +153,11 @@ struct Child {
     std::wstring name;
     PROCESS_INFORMATION pi{};
     HANDLE log = INVALID_HANDLE_VALUE;
-    bool exited_reported = false;
+    std::wstring log_path;
+    bool running = false;
+    unsigned restarts = 0;
+    ULONGLONG started_ms = 0;
+    ULONGLONG next_try_ms = 0;
 };
 
 bool start_child(Child* child, const std::wstring& dir, const std::wstring& logs) {
@@ -155,8 +166,9 @@ bool start_child(Child* child, const std::wstring& dir, const std::wstring& logs
         log_line("child missing: %ls", exe.c_str());
         return false;
     }
-    std::wstring log_path;
-    child->log = open_child_log(logs, child->name, &log_path);
+    if (child->log == INVALID_HANDLE_VALUE) {
+        child->log = open_child_log(logs, child->name, &child->log_path);
+    }
     if (child->log == INVALID_HANDLE_VALUE) {
         log_line("child log open failed for %ls (err=%lu)", child->name.c_str(), GetLastError());
         return false;
@@ -196,8 +208,10 @@ bool start_child(Child* child, const std::wstring& dir, const std::wstring& logs
     if (g_job != nullptr) {
         AssignProcessToJobObject(g_job, child->pi.hProcess);
     }
+    child->running = true;
+    child->started_ms = now_ms();
     log_line("started %ls pid=%lu -> %ls", child->name.c_str(), child->pi.dwProcessId,
-             log_path.c_str());
+             child->log_path.c_str());
     return true;
 }
 
@@ -233,16 +247,34 @@ void stop_children(Child* children, size_t count) {
 }
 
 void poll_children(Child* children, size_t count) {
+    const ULONGLONG now = now_ms();
     for (size_t i = 0; i < count; ++i) {
-        if (children[i].pi.hProcess == nullptr || children[i].exited_reported) {
+        Child& c = children[i];
+        if (!c.running || c.pi.hProcess == nullptr) {
             continue;
         }
-        if (WaitForSingleObject(children[i].pi.hProcess, 0) == WAIT_OBJECT_0) {
-            DWORD code = 0;
-            GetExitCodeProcess(children[i].pi.hProcess, &code);
-            log_line("child exited: %ls code=%lu", children[i].name.c_str(), code);
-            children[i].exited_reported = true;
+        if (WaitForSingleObject(c.pi.hProcess, 0) != WAIT_OBJECT_0) {
+            continue;
         }
+        DWORD code = 0;
+        GetExitCodeProcess(c.pi.hProcess, &code);
+        CloseHandle(c.pi.hThread);
+        CloseHandle(c.pi.hProcess);
+        c.pi = PROCESS_INFORMATION{};
+        c.running = false;
+        const ULONGLONG alive = now - c.started_ms;
+        if (alive >= kStableResetMs) {
+            c.restarts = 0;
+        }
+        const unsigned shift = c.restarts < 5 ? c.restarts : 5;
+        unsigned delay = kBackoffBaseMs << shift;
+        if (delay > kBackoffCapMs) {
+            delay = kBackoffCapMs;
+        }
+        ++c.restarts;
+        c.next_try_ms = now + delay;
+        log_line("child exited: %ls code=%lu (alive=%llums) -> restart #%u in %ums",
+                 c.name.c_str(), code, alive, c.restarts, delay);
     }
 }
 
@@ -303,6 +335,15 @@ int wmain() {
 
     while (InterlockedCompareExchange(&g_stop, 0, 0) == 0) {
         poll_children(children, 2);
+        const ULONGLONG now = now_ms();
+        for (size_t i = 0; i < 2; ++i) {
+            Child& c = children[i];
+            if (!c.running && now >= c.next_try_ms) {
+                if (!start_child(&c, dir, logs)) {
+                    c.next_try_ms = now + kBackoffCapMs;
+                }
+            }
+        }
         Sleep(kPollMs);
     }
     log_line("stopping");

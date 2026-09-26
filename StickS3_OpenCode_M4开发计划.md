@@ -146,7 +146,7 @@
 - **S4.7c 完成（2026-09-25）**：托盘菜单「配置 ASR Key…」/「删除 ASR Key」→ 复用已测试的 `asr_cred_tool.exe`（`store`/`delete`；**Key 由控制台隐藏输入，不进命令行**，符合凭据规则）。`tray.exe` BUILD_OK（161,792 B）、冒烟 RUNNING_OK。**未测**：真实点击菜单的 spawn（需 UI 交互）与真机凭据写入。
 - **构建路径补齐（2026-09-25）**：`tray` 目标已加入 `host/CMakeLists.txt`（`WIN32_EXECUTABLE`），与 `build_tray.cmd` 双路径一致；CMake(Ninja+VS2019) 构建 `toolchain_check.exe`/`sticks3_host_entry.exe`/`tray.exe` 全部成功。
 - **可测性补强（2026-09-25）**：把 `bridge.json` 解析提为纯模块 `host/src/tray_parse.h`（无 Win32 依赖），新增 `tray_parse_test.cpp`（**7 用例**：提取 url/token、缺失键、无值、未闭合串、空串、空 json）。实测 `TRAY_PARSE_PASS`；重构后 `tray.exe` 重建 BUILD_OK，且 **HEALTHY 路径复验通过**（防重构回归）。
-  - **明确未交付（更新 2026-09-26）**：S4.7d（重试入口）已完成；**启动器 LLD 已冻结并已实现 Slice 1**（`launcher.exe`：单实例/依序拉起/日志落盘/Job 收尾，本机冒烟通过）；**Slice 2（崩溃重启）起未做**。
+  - **明确未交付（更新 2026-09-26）**：S4.7d（重试入口）已完成；**启动器 LLD 已冻结并已实现 Slice 1—2**（`launcher.exe`：单实例/依序拉起/日志落盘+轮转/Job 收尾/**崩溃重启+指数退避**，本机冒烟通过）；**Slice 3 起（停止语义细化/端口契约落地/真机 HIL）未做**。
 
 ## 9. S4.7d 故事卡（重试入口）—— 设计已批准（2026-09-25）
 
