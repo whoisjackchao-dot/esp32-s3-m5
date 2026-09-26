@@ -1,4 +1,4 @@
-// M4 S4.2 —— STATE(0x12) 编解码黄金/边界测试（依据 contracts/M4-STATE快照冻结.md v1.0）。
+// M4 S4.2 —— STATE(0x12) 编解码黄金/边界测试（依据 contracts/M4-STATE快照冻结.md v1.1）。
 #include <stdio.h>
 #include <string.h>
 
@@ -28,15 +28,19 @@ static void test_idle_golden(void) {
     s.tokens_input = S3P_STATE_UNKNOWN;
     s.tokens_output = S3P_STATE_UNKNOWN;
     s.cost_milli = S3P_STATE_UNKNOWN;
+    s.tokens_reasoning = S3P_STATE_UNKNOWN;
+    s.tokens_cache_read = S3P_STATE_UNKNOWN;
 
     uint8_t buf[S3P_STATE_MAX_LEN];
     const size_t n = s3p_state_encode(&s, buf, sizeof(buf));
-    ck(n == S3P_STATE_FIXED_LEN, "idle: length = 23");
-    ck(buf[0] == 0x12 && buf[1] == 1, "idle: msgType/version");
+    ck(n == S3P_STATE_FIXED_LEN, "idle: length = fixed(31)");
+    ck(buf[0] == 0x12 && buf[1] == 2, "idle: msgType/version=2");
     ck(buf[2] == S3P_STATUS_IDLE, "idle: status");
     ck(buf[3] == S3P_FLAG_CAN_APPEND, "idle: flags");
     ck(rd32(buf + 4) == 42, "idle: revision LE");
-    ck(rd32(buf + 11) == 0xFFFFFFFFu, "idle: unknown sentinel");
+    ck(rd32(buf + 11) == 0xFFFFFFFFu, "idle: in unknown");
+    ck(rd32(buf + 23) == 0xFFFFFFFFu, "idle: reasoning unknown");
+    ck(rd32(buf + 27) == 0xFFFFFFFFu, "idle: cacheRead unknown");
 }
 
 static void test_roundtrip_full(void) {
@@ -52,6 +56,8 @@ static void test_roundtrip_full(void) {
     s.tokens_input = 100;
     s.tokens_output = 20;
     s.cost_milli = 120;
+    s.tokens_reasoning = 771532u;
+    s.tokens_cache_read = 270690560u;
     strcpy(s.project, "stick-s3");
     strcpy(s.title, "会话标题");
     strcpy(s.model, "claude-sonnet-4.5");
@@ -65,7 +71,11 @@ static void test_roundtrip_full(void) {
     ck(d.status == s.status && d.flags == s.flags, "full: status/flags");
     ck(d.revision == s.revision, "full: revision");
     ck(d.tool_count == 2 && d.todo_completed == 2 && d.todo_total == 3, "full: tools/todo");
-    ck(d.tokens_input == 100 && d.tokens_output == 20 && d.cost_milli == 120, "full: usage");
+    ck(d.tokens_input == 100 && d.tokens_output == 20 && d.cost_milli == 120, "full: usage in/out/cost");
+    ck(d.tokens_reasoning == 771532u && d.tokens_cache_read == 270690560u,
+       "full: usage reasoning/cacheRead");
+    ck(rd32(buf + 23) == 771532u && rd32(buf + 27) == 270690560u,
+       "full: reasoning/cacheRead LE at 23/27");
     ck(strcmp(d.project, "stick-s3") == 0, "full: project");
     ck(strcmp(d.title, "会话标题") == 0, "full: title (utf8)");
     ck(strcmp(d.model, "claude-sonnet-4.5") == 0, "full: model");
@@ -102,9 +112,11 @@ static void test_reject(void) {
 
     uint8_t bad_ver[S3P_STATE_MAX_LEN];
     memcpy(bad_ver, buf, n);
-    bad_ver[1] = 2;
     s3p_state_snapshot d;
+    bad_ver[1] = 3;
     ck(!s3p_state_decode(bad_ver, n, &d), "reject: bad version");
+    bad_ver[1] = 1;
+    ck(!s3p_state_decode(bad_ver, n, &d), "reject: v1(old) rejected under v2");
 
     ck(!s3p_state_decode(buf, S3P_STATE_FIXED_LEN - 1, &d), "reject: short buffer");
 
@@ -126,6 +138,8 @@ static void test_sentinels(void) {
     s.tokens_input = S3P_STATE_UNKNOWN;
     s.tokens_output = S3P_STATE_NOT_REPORTED;
     s.cost_milli = 0;  // 有依据的 0
+    s.tokens_reasoning = S3P_STATE_NOT_REPORTED;
+    s.tokens_cache_read = 0;
 
     uint8_t buf[S3P_STATE_MAX_LEN];
     const size_t n = s3p_state_encode(&s, buf, sizeof(buf));
@@ -134,6 +148,8 @@ static void test_sentinels(void) {
     ck(d.tokens_input == S3P_STATE_UNKNOWN, "sentinel: unknown");
     ck(d.tokens_output == S3P_STATE_NOT_REPORTED, "sentinel: not_reported");
     ck(d.cost_milli == 0, "sentinel: known zero stays zero");
+    ck(d.tokens_reasoning == S3P_STATE_NOT_REPORTED, "sentinel: reasoning not_reported");
+    ck(d.tokens_cache_read == 0, "sentinel: cacheRead known zero stays zero");
 }
 
 int main(void) {

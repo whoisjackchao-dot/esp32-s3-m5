@@ -1,13 +1,13 @@
 #pragma once
 // M4 S4.2 —— STATE(0x12) 快照载荷编解码（固件/主机共享，纯 C）。
-// 依据冻结契约 contracts/M4-STATE快照冻结.md v1.0；小端。
+// 依据冻结契约 contracts/M4-STATE快照冻结.md v1.1；小端。固定段 31B，snapshotVersion=2。
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #define S3P_STATE_MSG_TYPE 0x12u
-#define S3P_STATE_VERSION 1u
-#define S3P_STATE_FIXED_LEN 23u
+#define S3P_STATE_VERSION 2u
+#define S3P_STATE_FIXED_LEN 31u
 #define S3P_STATE_MAX_TEXT 32u
 #define S3P_STATE_MAX_LEN (S3P_STATE_FIXED_LEN + 3u * (2u + S3P_STATE_MAX_TEXT))
 
@@ -43,6 +43,8 @@ typedef struct {
     uint32_t tokens_input;
     uint32_t tokens_output;
     uint32_t cost_milli;
+    uint32_t tokens_reasoning;
+    uint32_t tokens_cache_read;
     char project[S3P_STATE_MAX_TEXT + 1];
     char title[S3P_STATE_MAX_TEXT + 1];
     char model[S3P_STATE_MAX_TEXT + 1];

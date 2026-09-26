@@ -62,7 +62,9 @@ void state_merge(s3p_state_snapshot *out, const br03_snapshot *in) {
     }
     const uint8_t usage_known = (in->tokens_input != S3P_STATE_UNKNOWN) ||
                                 (in->tokens_output != S3P_STATE_UNKNOWN) ||
-                                (in->cost_milli != S3P_STATE_UNKNOWN);
+                                (in->cost_milli != S3P_STATE_UNKNOWN) ||
+                                (in->tokens_reasoning != S3P_STATE_UNKNOWN) ||
+                                (in->tokens_cache_read != S3P_STATE_UNKNOWN);
     if (usage_known) {
         flags |= S3P_FLAG_HAS_USAGE;
     }
@@ -77,4 +79,6 @@ void state_merge(s3p_state_snapshot *out, const br03_snapshot *in) {
     out->tokens_input = in->tokens_input;
     out->tokens_output = in->tokens_output;
     out->cost_milli = in->cost_milli;
+    out->tokens_reasoning = in->tokens_reasoning;
+    out->tokens_cache_read = in->tokens_cache_read;
 }

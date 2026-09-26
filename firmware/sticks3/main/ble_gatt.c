@@ -43,7 +43,7 @@ static bool s_event_subscribed;
 static uint16_t s_link_mtu;
 static uint16_t s_host_mtu;   /* READY{mtu} 上报值 */
 static uint8_t s_heartbeat_seq;
-static uint8_t s_state_status; /* S3P_STATUS_*：M4 STATE(0x12) 契约 v1.0 */
+static uint8_t s_state_status; /* S3P_STATUS_*：M4 STATE(0x12) 契约 v1.1 */
 static uint8_t s_state_flags;  /* S3P_FLAG_* */
 static bool s_state_valid;
 static s3p_state_snapshot s_state_snap; /* 供三页显示（S4.3）读取 */
@@ -193,7 +193,7 @@ static int chr_ctrl_access(uint16_t conn_handle, uint16_t attr_handle,
         s_heartbeat_seq = buf[1];
         ESP_LOGI(TAG, "host HEARTBEAT: seq=%u", s_heartbeat_seq);
         break;
-    case 0x12: { /* STATE：M4 契约 v1.0（contracts/M4-STATE快照冻结.md） */
+    case 0x12: { /* STATE：M4 契约 v1.1（contracts/M4-STATE快照冻结.md） */
         s3p_state_snapshot st;
         if (!s3p_state_decode(buf, om_len, &st)) {
             ESP_LOGW(TAG, "STATE 解码失败 len=%u", (unsigned)om_len);
@@ -203,9 +203,10 @@ static int chr_ctrl_access(uint16_t conn_handle, uint16_t attr_handle,
         s_state_flags = st.flags;
         s_state_snap = st;
         s_state_valid = true;
-        ESP_LOGI(TAG, "host STATE status=%u flags=0x%02x rev=%lu tools=%u",
+        ESP_LOGI(TAG, "host STATE status=%u flags=0x%02x rev=%lu tools=%u cost=%lu reason=%lu cache=%lu",
                  (unsigned)st.status, (unsigned)st.flags, (unsigned long)st.revision,
-                 (unsigned)st.tool_count);
+                 (unsigned)st.tool_count, (unsigned long)st.cost_milli,
+                 (unsigned long)st.tokens_reasoning, (unsigned long)st.tokens_cache_read);
         break;
     }
     case 0x7F: /* 测试专用：让设备主动断开链路，供 Q05「重连不重放」确定性验证。

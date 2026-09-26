@@ -474,6 +474,7 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **用户已裁定（2026-09-27）**：① 修 §5.2 ✅（已完成）；② 继续执行清单 **#2+#4**（cost 毫单位换算 + 固件日志，需刷机）与 **#3** 扩 `reasoning/cache` 字段（报表应走 ADR + 契约 v1.1）；③ **授权提交**本轮改动。
 - **已提交（用户授权，2026-09-27）**：`07332c3 fix(m4): 控制端点加固…`、`2667257 docs(m4): …证据/脚本/登记`。
 - **§6 #2 换算已完成（2026-09-27）**：新增 `host/src/cost_scale.h`（`cost_to_milli`：四舍五入 ×1000、负值→0、超限夹到哨兵下方）+ 接入 `bridge_snapshot.h`（`avail_cost_milli`）；单测 **RED→GREEN 7/7**（并暴露"负值回绕撞 NOT_REPORTED"已修）；`state_host`/`ble_client` 重建 **BUILD_OK**。**登记文档冲突**：`M4收口就绪核查.md` #2 原"→1846"与公式 `+0.5` 矛盾，应为 **→1847**（对两位小数显示无影响）。证据：[evidence/M4/2026-09-27-cost毫单位换算.md](./evidence/M4/2026-09-27-cost毫单位换算.md)。
-- **下一步**：**#3 + #4**（`reasoning/cache` 扩字段 → 先走 **ADR + 契约 v1.1 + 黄金向量**；USAGE 页显示 `COST: 1.85 ¥`；`ble_gatt.c` 追加 `cost=%lu`）→ 刷机端到端。**#3 未做前设备 USAGE 页暂显整数 `1847`（中间态，已登记）**。
-- **不要重复询问**：#1、§5.2、#2 换算 已批准/完成，无需再确认。
+- **§6 #3 + #4 已实现（2026-09-27）**：契约 **v1.1**（ADR-2026-09-27；固定段 31B / version 2；`tokens.reasoning`/`cacheRead`；MTU 阈值 136）；`s3p_state`/`state_merge`/`bridge_snapshot`/`ble_gatt`（+`cost=%lu reason=%lu cache=%lu`）/`display`（`cost_text` `%.2f`+`¥` 字形；`REASON`/`CACHE` 行）全部更新。单测 `s3p_state` **34/0**、`state_merge` **23/0**；固件**已刷机**（`sticks3.bin` sha `143590c7…`）；**受控 E2E 串口实证** `host STATE … cost=1847 reason=771532 cache=270690560`。证据：[evidence/M4/2026-09-27-STATEv1.1用量字段.md](./evidence/M4/2026-09-27-STATEv1.1用量字段.md)。
+- **待用户确认**：设备 USAGE 页（侧键切 `3/3`）目视 —— `COST: 1.85¥` / `REASON 771532` / `CACHE 270690560`。
+- **不要重复询问**：#1、§5.2、#2 换算、#3/#4 已批准/实现，无需再确认。
 

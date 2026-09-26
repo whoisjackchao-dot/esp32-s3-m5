@@ -127,6 +127,8 @@ inline bool parse_snapshot(const std::string& json, br03_snapshot& out) {
             const JsonObject us = o.GetNamedObject(L"usage");
             b.tokens_input = avail_number(us, L"input", S3P_STATE_UNKNOWN);
             b.tokens_output = avail_number(us, L"output", S3P_STATE_UNKNOWN);
+            b.tokens_reasoning = avail_number(us, L"reasoning", S3P_STATE_UNKNOWN);
+            b.tokens_cache_read = avail_number(us, L"cacheRead", S3P_STATE_UNKNOWN);
         }
         b.cost_milli = avail_cost_milli(o, L"cost", S3P_STATE_UNKNOWN);
         static std::string s_project, s_title, s_model;

@@ -23,6 +23,8 @@ static br03_snapshot base(void) {
     in.tokens_input = S3P_STATE_UNKNOWN;
     in.tokens_output = S3P_STATE_UNKNOWN;
     in.cost_milli = S3P_STATE_UNKNOWN;
+    in.tokens_reasoning = S3P_STATE_UNKNOWN;
+    in.tokens_cache_read = S3P_STATE_UNKNOWN;
     return in;
 }
 
@@ -50,6 +52,8 @@ static void test_full(void) {
     in.tokens_input = 100;
     in.tokens_output = S3P_STATE_NOT_REPORTED;
     in.cost_milli = 0;  // 有依据的 0
+    in.tokens_reasoning = 771532;
+    in.tokens_cache_read = 270690560u;
     in.project = "stick-s3";
     in.title = "会话标题";
     in.model = "claude-sonnet-4.5";
@@ -66,6 +70,8 @@ static void test_full(void) {
     ck(strcmp(out.model, "claude-sonnet-4.5") == 0, "full: model text");
     ck(out.tool_count == 2 && out.todo_completed == 2 && out.todo_total == 3, "full: tools/todo");
     ck(out.tokens_input == 100 && out.tokens_output == S3P_STATE_NOT_REPORTED, "full: usage sentinels");
+    ck(out.tokens_reasoning == 771532u && out.tokens_cache_read == 270690560u,
+       "full: reasoning/cacheRead mapped");
     // 端到端：合并 → 编码 → 解码
     uint8_t buf[S3P_STATE_MAX_LEN];
     const size_t n = s3p_state_encode(&out, buf, sizeof(buf));
@@ -73,6 +79,8 @@ static void test_full(void) {
     memset(&d, 0, sizeof(d));
     ck(n > 0 && s3p_state_decode(buf, n, &d), "full: merge->encode->decode");
     ck(d.status == S3P_STATUS_ERROR && strcmp(d.project, "stick-s3") == 0, "full: roundtrip fields");
+    ck(d.tokens_reasoning == 771532u && d.tokens_cache_read == 270690560u,
+       "full: reasoning/cacheRead roundtrip");
 }
 
 static void test_todo_unknown(void) {

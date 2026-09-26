@@ -1,7 +1,7 @@
 #pragma once
 // M4 S4.2 —— BR-03 精简快照 → STATE(0x12) 字段映射（“合并”）。
 // 纯逻辑，与 host 进程形态无关；输出可直接交 s3p_state_encode。
-// 依据 contracts/M4-STATE快照冻结.md v1.0 与 HLD §7.4。
+// 依据 contracts/M4-STATE快照冻结.md v1.1 与 HLD §7.4。
 #include <stdint.h>
 
 #include "s3p_state.h"
@@ -20,6 +20,8 @@ typedef struct {
     uint32_t tokens_input;   // 未知用 S3P_STATE_UNKNOWN
     uint32_t tokens_output;  // 未报告用 S3P_STATE_NOT_REPORTED
     uint32_t cost_milli;     // 未知用 S3P_STATE_UNKNOWN
+    uint32_t tokens_reasoning;   // v1.1
+    uint32_t tokens_cache_read;  // v1.1
     const char *project;     // NULL/"" = 无
     const char *title;
     const char *model;

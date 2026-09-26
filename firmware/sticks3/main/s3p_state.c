@@ -1,4 +1,4 @@
-// M4 S4.2 —— STATE(0x12) 编解码实现。依据契约 v1.0。
+// M4 S4.2 —— STATE(0x12) 编解码实现。依据契约 v1.1。
 #include "s3p_state.h"
 
 #include <string.h>
@@ -47,6 +47,8 @@ size_t s3p_state_encode(const s3p_state_snapshot *s, uint8_t *out, size_t cap) {
     wr_u32(out + 11, s->tokens_input);
     wr_u32(out + 15, s->tokens_output);
     wr_u32(out + 19, s->cost_milli);
+    wr_u32(out + 23, s->tokens_reasoning);
+    wr_u32(out + 27, s->tokens_cache_read);
     size_t len = S3P_STATE_FIXED_LEN;
 
     const uint8_t tags[3] = {0x01u, 0x02u, 0x03u};
@@ -88,6 +90,8 @@ bool s3p_state_decode(const uint8_t *in, size_t len, s3p_state_snapshot *out) {
     out->tokens_input = rd_u32(in + 11);
     out->tokens_output = rd_u32(in + 15);
     out->cost_milli = rd_u32(in + 19);
+    out->tokens_reasoning = rd_u32(in + 23);
+    out->tokens_cache_read = rd_u32(in + 27);
 
     size_t off = S3P_STATE_FIXED_LEN;
     while (off + 2u <= len) {

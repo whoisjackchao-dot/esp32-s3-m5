@@ -57,15 +57,23 @@ static inline uint16_t pxswap(uint16_t c) {
 #define C_DGREEN 0x03E0
 #define C_YELLOW 0xFFE0
 
+/* 自定义字形（font8x8_basic 仅 ASCII）：码位 0x80 = 人民币符号 ¥。 */
+static const uint8_t GLYPH_YEN[8] = {0x42u, 0x24u, 0x18u, 0x7Eu, 0x18u, 0x7Eu, 0x18u, 0x00u};
+
 /* font8x8（公有领域）：行字节，bit0=最左像素；scale 整数放大 */
 static void draw_char8(int x, int y, char c, uint16_t color, int scale) {
     const uint8_t idx = (uint8_t)c;
-    if (idx >= 128u) {
+    const uint8_t *rows;
+    if (idx == 0x80u) {
+        rows = GLYPH_YEN;
+    } else if (idx < 128u) {
+        rows = (const uint8_t *)font8x8_basic[idx];
+    } else {
         return;
     }
     y += Y_SHIFT;
     for (int row = 0; row < 8; ++row) {
-        const uint8_t bits = (uint8_t)font8x8_basic[idx][row];
+        const uint8_t bits = (uint8_t)rows[row];
         for (int col = 0; col < 8; ++col) {
             if ((bits & (uint8_t)(1u << col)) == 0) {
                 continue;
@@ -193,6 +201,17 @@ static void u32_text(char *out, size_t cap, uint32_t v) {
     }
 }
 
+/* 费用（毫单位）→ "1.85¥"（两位小数 + 码位 0x80 的 ¥ 字形）；三态同 u32_text。 */
+static void cost_text(char *out, size_t cap, uint32_t milli) {
+    if (milli == S3P_STATE_UNKNOWN) {
+        snprintf(out, cap, "?");
+    } else if (milli == S3P_STATE_NOT_REPORTED) {
+        snprintf(out, cap, "-");
+    } else {
+        snprintf(out, cap, "%.2f%c", (double)milli / 1000.0, (char)0x80);
+    }
+}
+
 static int s_bat_pct;
 static bool s_bat_charging;
 static bool s_bat_valid;
@@ -278,8 +297,15 @@ static void render_page(int page, bool connected, bool recording) {
         u32_text(b, sizeof(b), valid ? s->tokens_output : S3P_STATE_UNKNOWN);
         draw_str(4, 100, b, C_YELLOW, 2);
         draw_str(4, 120, "COST:", C_WHITE, 2);
-        u32_text(b, sizeof(b), valid ? s->cost_milli : S3P_STATE_UNKNOWN);
+        cost_text(b, sizeof(b), valid ? s->cost_milli : S3P_STATE_UNKNOWN);
         draw_str(4, 140, b, C_YELLOW, 2);
+        /* v1.1 新增用量（scale 1 单行） */
+        draw_str(4, 166, "REASON", C_WHITE, 1);
+        u32_text(b, sizeof(b), valid ? s->tokens_reasoning : S3P_STATE_UNKNOWN);
+        draw_str(4 + 7 * 8, 166, b, C_YELLOW, 1);
+        draw_str(4, 182, "CACHE", C_WHITE, 1);
+        u32_text(b, sizeof(b), valid ? s->tokens_cache_read : S3P_STATE_UNKNOWN);
+        draw_str(4 + 6 * 8, 182, b, C_YELLOW, 1);
     }
     /* 电量三页常驻（S4.5） */
     if (s_bat_valid) {
