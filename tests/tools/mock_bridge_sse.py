@@ -53,9 +53,11 @@ def handle(conn):
         if "GET /v1/state/stream" in first:
             conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n"
                          b"Transfer-Encoding: chunked\r\nConnection: keep-alive\r\n\r\n")
-            for i in range(180):
-                payload = ("event: snapshot\ndata: " + json.dumps(snapshot(1001 + i)) + "\n\n").encode()
+            rev = 1001
+            while True:
+                payload = ("event: snapshot\ndata: " + json.dumps(snapshot(rev)) + "\n\n").encode()
                 conn.sendall(("%X\r\n" % len(payload)).encode() + payload + b"\r\n")
+                rev += 1
                 time.sleep(1)
         else:
             body = b'{"alive":true}'

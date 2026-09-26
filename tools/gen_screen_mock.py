@@ -17,6 +17,7 @@ PURPLE = (205, 156, 255)  # C_PURPLE 0xCA9F -> #CD9CFF
 YELLOW = (255, 255, 0)
 BLUE = (51, 153, 255)  # #3399FF
 RED = (255, 0, 0)
+YEN = [0x42, 0x24, 0x18, 0x7E, 0x18, 0x7E, 0x18, 0x00]  # 与 display.c GLYPH_YEN 一致（码位 0x80）
 
 
 def load_font(path):
@@ -29,10 +30,13 @@ def load_font(path):
 
 def draw_char(px, g, x, y, ch, color, scale):
     o = ord(ch)
-    if o >= 128 or o >= len(g):
+    if o == 0x80:
+        rows = YEN
+    elif o < 128 and o < len(g):
+        rows = g[o]
+    else:
         return
     y += Y_SHIFT
-    rows = g[o]
     for row in range(8):
         bits = rows[row]
         for col in range(8):
@@ -99,11 +103,15 @@ def page(px, g, idx):
     else:
         draw_title(px, g, "USAGE")
         draw_str(px, g, 4, 40, "IN:", WHITE, 2)
-        draw_str(px, g, 4, 60, "123456", YELLOW, 2)
+        draw_str(px, g, 4, 60, "2445534", YELLOW, 2)
         draw_str(px, g, 4, 80, "OUT:", WHITE, 2)
-        draw_str(px, g, 4, 100, "2345", YELLOW, 2)
+        draw_str(px, g, 4, 100, "341798", YELLOW, 2)
         draw_str(px, g, 4, 120, "COST:", WHITE, 2)
-        draw_str(px, g, 4, 140, "1234", YELLOW, 2)
+        draw_str(px, g, 4, 140, "1.85" + chr(0x80), YELLOW, 2)
+        draw_str(px, g, 4, 166, "REASON", WHITE, 1)
+        draw_str(px, g, 4 + 7 * 8, 166, "771532", YELLOW, 1)
+        draw_str(px, g, 4, 182, "CACHE", WHITE, 1)
+        draw_str(px, g, 4 + 6 * 8, 182, "270690560", YELLOW, 1)
     draw_str(px, g, 4, 204, "BAT", BLUE, 2)
     draw_str(px, g, 4 + 3 * 16, 208, "87%", WHITE, 1)
     draw_str(px, g, W - 24, H - 12 - Y_SHIFT, "%d/3" % (idx + 1), WHITE, 1)
