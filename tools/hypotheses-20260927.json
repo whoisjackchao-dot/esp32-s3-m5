@@ -1,0 +1,62 @@
+[
+    {
+        "id":  "q04-01",
+        "hypothesis":  "第一句话，一共五秒，就五秒"
+    },
+    {
+        "id":  "q04-02",
+        "hypothesis":  "别把密钥写进config.json的第五行"
+    },
+    {
+        "id":  "q04-03",
+        "hypothesis":  "未提交前不要修改APP点TS的第三百行"
+    },
+    {
+        "id":  "q04-04",
+        "hypothesis":  "勿在build点，windows的里加2.10.1版本号"
+    },
+    {
+        "id":  "q04-05",
+        "hypothesis":  "不要重写read me点md的前八行"
+    },
+    {
+        "id":  "q04-06",
+        "hypothesis":  "别在utility点py删掉第四十二行的判断"
+    },
+    {
+        "id":  "q04-07",
+        "hypothesis":  "不要跳过test下划线api点py的第七个用例"
+    },
+    {
+        "id":  "q04-08",
+        "hypothesis":  "为测试前不要合并feature写线log in的三个提交"
+    },
+    {
+        "id":  "q04-09",
+        "hypothesis":  "不要把debug留在server点go的第88行"
+    },
+    {
+        "id":  "q04-10",
+        "hypothesis":  "不要改，dockerfile里port里8080"
+    },
+    {
+        "id":  "q04-11",
+        "hypothesis":  "不要忘记在package.json加v1.5.0依赖"
+    },
+    {
+        "id":  "q04-12",
+        "hypothesis":  "误删除index点htmld20行的id"
+    },
+    {
+        "id":  "q04-13",
+        "hypothesis":  "不要在db点sql的第三段执行drop"
+    },
+    {
+        "id":  "q04-14",
+        "hypothesis":  "别把log点py第十五行的级别从warm降到debog"
+    },
+    {
+        "id":  "q04-15",
+        "hypothesis":  "为备份前不要动migrations，斜线002点sql"
+    }
+]
