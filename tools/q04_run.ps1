@@ -1,4 +1,4 @@
-# q04_run.ps1 — Q04 真实 ASR 跑批：冻结语料 15 条 wav → hypotheses.json
+﻿# q04_run.ps1 — Q04 真实 ASR 跑批：冻结语料 15 条 wav → hypotheses.json
 # Key 用隐藏输入，仅本进程环境变量，不入日志/命令行（SEC-03）。
 # 用法：powershell -ExecutionPolicy Bypass -File tools\q04_run.ps1
 param(
