@@ -209,11 +209,6 @@ static int chr_ctrl_access(uint16_t conn_handle, uint16_t attr_handle,
                  (unsigned long)st.tokens_reasoning, (unsigned long)st.tokens_cache_read);
         break;
     }
-    case 0x7F: /* 测试专用：让设备主动断开链路，供 Q05「重连不重放」确定性验证。
-                * 生产固件不应依赖此消息（保留值，非冻结契约的一部分）。 */
-        ESP_LOGW(TAG, "测试钩子：主动断开 conn=%u", s_conn_handle);
-        (void)ble_gap_terminate(s_conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-        break;
     default:
         ESP_LOGW(TAG, "未知控制消息 msgType=0x%02x", buf[0]);
         return BLE_ATT_ERR_UNLIKELY;
