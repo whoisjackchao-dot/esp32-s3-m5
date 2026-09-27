@@ -80,6 +80,10 @@ static std::string g_last_text;
 static std::string g_host_token;
 static int g_host_port = 45910;
 static volatile LONG g_http_stop = 0;
+static volatile LONG g_drop_test_target = 0; /* 测试(S-M5-1/PERF-02)：state_host 自断链 N 次（0=关） */
+static volatile LONG g_drop_test_done = 0;
+static volatile LONG g_drop_armed = 0;
+static uint64_t g_drop_t0 = 0;
 
 static void say(const char* msg) {
     std::printf("[state_host] %s\n", msg);
@@ -752,6 +756,8 @@ static int run_host() {
         g_host_token = (tk && *tk) ? tk : "sticks3-host";
         const char* hp = std::getenv("STICKS3_HOST_PORT");
         if (hp && std::atoi(hp) > 0) g_host_port = std::atoi(hp);
+        const char* dtest = std::getenv("STICKS3_HOST_DROP_TEST");
+        if (dtest && std::atoi(dtest) > 0) g_drop_test_target = std::atoi(dtest);
         std::thread(http_thread).detach();
         write_host_descriptor();
     }
@@ -887,6 +893,31 @@ static int run_host() {
                         if (in.revision == g_last_rev) continue;
                         if (push_state(ctrl, in)) {
                             g_last_rev = in.revision;
+                            if (g_drop_test_target > 0 && g_drop_test_done < g_drop_test_target) {
+                                if (g_drop_armed != 0) {
+                                    const uint64_t dt = GetTickCount64() - g_drop_t0;
+                                    g_drop_armed = 0;
+                                    ++g_drop_test_done;
+                                    std::printf("[state_host] TEST recovered #%ld delta_ms=%llu\n",
+                                                (long)g_drop_test_done, (unsigned long long)dt);
+                                    std::fflush(stdout);
+                                }
+                                if (g_drop_armed == 0 && g_drop_test_done < g_drop_test_target) {
+                                    const uint8_t dd[1] = {0x7F};
+                                    Buffer wb(1);
+                                    wb.Length(1);
+                                    std::memcpy(wb.data(), dd, 1);
+                                    g_drop_t0 = GetTickCount64();
+                                    g_drop_armed = 1;
+                                    std::printf("[state_host] TEST drop #%ld\n", (long)g_drop_test_done + 1);
+                                    std::fflush(stdout);
+                                    try {
+                                        (void)ctrl.WriteValueAsync(wb, GattWriteOption::WriteWithResponse).get();
+                                    } catch (...) {
+                                        /* 设备断链致写入中止：预期，忽略 */
+                                    }
+                                }
+                            }
                         } else {
                             say("STATE write failed; reconnecting BLE");
                             ctrl = nullptr;
