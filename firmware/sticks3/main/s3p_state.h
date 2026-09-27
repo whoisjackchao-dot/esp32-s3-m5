@@ -24,6 +24,11 @@ typedef enum {
     S3P_STATUS_ERROR = 5
 } s3p_state_status;
 
+// 提示音声数策略（供固件 alert 任务与 host 单测共享）。
+#define S3P_ALERT_BEEPS_WAITING 2u
+#define S3P_ALERT_BEEPS_ERROR 1u
+uint8_t s3p_alert_beep_count(uint8_t status);
+
 #define S3P_FLAG_CAN_APPEND (1u << 0)
 #define S3P_FLAG_EXPIRED (1u << 1)
 #define S3P_FLAG_HAS_PROJECT (1u << 2)

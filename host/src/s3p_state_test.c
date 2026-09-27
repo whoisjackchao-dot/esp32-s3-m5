@@ -152,12 +152,21 @@ static void test_sentinels(void) {
     ck(d.tokens_cache_read == 0, "sentinel: cacheRead known zero stays zero");
 }
 
+static void test_alert_beeps(void) {
+    ck(s3p_alert_beep_count(S3P_STATUS_WAITING) == 2, "alert: waiting -> 2 beeps");
+    ck(s3p_alert_beep_count(S3P_STATUS_ERROR) == 1, "alert: error -> 1 beep");
+    ck(s3p_alert_beep_count(S3P_STATUS_BUSY) == 0, "alert: busy -> 0 beep");
+    ck(s3p_alert_beep_count(S3P_STATUS_IDLE) == 0, "alert: idle -> 0 beep");
+    ck(s3p_alert_beep_count(S3P_STATUS_UNKNOWN) == 0, "alert: unknown -> 0 beep");
+}
+
 int main(void) {
     test_idle_golden();
     test_roundtrip_full();
     test_truncation_codepoint_safe();
     test_reject();
     test_sentinels();
+    test_alert_beeps();
     printf("%d checks, %d failures\n", g_checks, g_fail);
     return g_fail == 0 ? 0 : 1;
 }

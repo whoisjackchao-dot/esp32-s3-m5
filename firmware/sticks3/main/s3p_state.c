@@ -118,3 +118,14 @@ bool s3p_state_decode(const uint8_t *in, size_t len, s3p_state_snapshot *out) {
     }
     return true;
 }
+
+// S4.4+ —— 状态 -> 提示音声数策略。
+uint8_t s3p_alert_beep_count(uint8_t status) {
+    if (status == S3P_STATUS_WAITING) {
+        return S3P_ALERT_BEEPS_WAITING;
+    }
+    if (status == S3P_STATUS_ERROR) {
+        return S3P_ALERT_BEEPS_ERROR;
+    }
+    return 0u;
+}
