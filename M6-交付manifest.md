@@ -11,7 +11,7 @@
 | --- | --- |
 | **源码版本** | git tag `m6-candidate-20260927-3`（commit `6635576`；含 S4.4+ 双声提示） |
 | 工作树 | **干净**（`git status --porcelain` 为空 → HEAD == 构建所用工作树） |
-| 交付形态 | **本地目录**（未建仓 / 未 push / 未 Release；Q07 未授权） |
+| 交付形态 | **本地目录** + **已推送 GitHub**（`origin/main`；用户 2026-09-27「4项全部授权」后 push + 建 Release；Release = prerelease `m6-candidate-20260927-3`）。Q07 原"不推送"被该授权覆盖 |
 | 逐字节可复现 | **未声称、未批准**（见 §6） |
 
 ## 2. 构建环境（精确版本，2026-09-27 实测）
@@ -37,7 +37,7 @@
 | --- | --- | --- |
 | `bootloader.bin` | 20832 | `09e4c0e970f5bf08d48d63cbeb2853af1b9bd2d0e42279ed6680668127208b9c` |
 | `partition-table.bin` | 3072 | `7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820` |
-| `sticks3.bin` | 739520 | `44a38f513aad1c04805199273bae59a8fa0656412aa78f9ec275fd3248d7545e` |
+| `sticks3.bin` | 739792 | `44a38f513aad1c04805199273bae59a8fa0656412aa78f9ec275fd3248d7545e` |
 
 > 2026-09-27 更新：加入 S4.4+ 双声提示后，于 tag `m6-candidate-20260927-3` **干净重建**（内嵌 `App version=m6-candidate-20260927-3`）并重刷。**观察**：bootloader 在不同构建间**哈希不同** → 佐证"逐字节可复现未声称"。
 
