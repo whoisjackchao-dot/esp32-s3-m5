@@ -559,7 +559,7 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **需求**（用户，2026-09-27）：会话**阻塞等待我给出内容**（权限/问题对话框）时，设备短响 **2 声**。范围经确认＝**仅阻塞型提示**。
 - **实现**：`s3p_alert_beep_count(status)`（waiting=2 / error=1 / 其余 0，固件与 host 共享）+ `audio_capture_beep_n(n)`（150ms 音 + 120ms 间隔）+ `alert_task` 接线（录音中延后、过期不响）。**无契约/插件变更**（复用 `status=4 waiting`）。
 - **证据**：T＝变异 RED（`FAIL waiting -> 2 beeps`）→ GREEN（39/0）；D＝`idf.py build` exit 0；H＝串口 `alert: status=4 beeps=2` + 用户**两次**听声确认。→ [evidence/M6/2026-09-27-等待输入双声提示.md](./evidence/M6/2026-09-27-等待输入双声提示.md)。
-- **产物**：`flash-artifacts/sticks3.bin` = `3045b874…`（**已刷设备**）；源码 `d83bb2c`。
+- **产物**：`flash-artifacts/sticks3.bin` = `44a38f51…`（**已刷设备**，tag `m6-candidate-20260927-3`）；源码 `d83bb2c`。
 - **提交**：`d1cb2dd`（策略+测试）/`d83bb2c`（双声接线）。
 - **待决**：是否也为 `session.idle`（助手说完）或"完成"事件加提示音（当前不做）。
 

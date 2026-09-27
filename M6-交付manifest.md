@@ -9,7 +9,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| **源码版本** | git `d83bb2c`（2026-09-27；含 S4.4+ 双声提示） |
+| **源码版本** | git tag `m6-candidate-20260927-3`（commit `6635576`；含 S4.4+ 双声提示） |
 | 工作树 | **干净**（`git status --porcelain` 为空 → HEAD == 构建所用工作树） |
 | 交付形态 | **本地目录**（未建仓 / 未 push / 未 Release；Q07 未授权） |
 | 逐字节可复现 | **未声称、未批准**（见 §6） |
@@ -37,9 +37,9 @@
 | --- | --- | --- |
 | `bootloader.bin` | 20832 | `09e4c0e970f5bf08d48d63cbeb2853af1b9bd2d0e42279ed6680668127208b9c` |
 | `partition-table.bin` | 3072 | `7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820` |
-| `sticks3.bin` | 739520 | `3045b874f4d63a5c9d909e256d5d27a3a446b83d3ec3fa112d88bf90246498d7` |
+| `sticks3.bin` | 739520 | `44a38f513aad1c04805199273bae59a8fa0656412aa78f9ec275fd3248d7545e` |
 
-> 2026-09-27 更新：加入 S4.4+ 双声提示后重刷，`sticks3.bin` 变更。**观察**：bootloader 在不同构建（clean vs 增量）间**哈希不同** → 佐证"逐字节可复现未声称"。
+> 2026-09-27 更新：加入 S4.4+ 双声提示后，于 tag `m6-candidate-20260927-3` **干净重建**（内嵌 `App version=m6-candidate-20260927-3`）并重刷。**观察**：bootloader 在不同构建间**哈希不同** → 佐证"逐字节可复现未声称"。
 
 > 产物清单与哈希另有 `flash-artifacts/SHA256SUMS`（单一真相源）。分区/偏移/恢复见 `tools/USB刷写清单.md`。
 
