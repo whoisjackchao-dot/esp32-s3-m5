@@ -540,3 +540,15 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **漂移更正**：README §2 环境表与实际不符（ESP-IDF 5.5.5→**5.5.4-dirty**、Bun 1.2.23→**1.4.2**、Node v24.19.0→**v24.15.0**、MSVC 14.44→**14.29**）——已按实测更正；README §1/§5 陈旧状态一并更新。
 - **未闭合**：逐字节可复现未声称；设备未刷；源码/依赖未打 tag；NOTICE 残余 / 隐私报告(SEC-04) / REL-01—04 / 安装后真实 E2E。
 - **提交**：本次**未提交**（新增文档 + README/索引改动；按 README §4「不擅自 commit」待授权）。
+
+### 2026-09-27 工作登记（Sisyphus）—— M6 续：刷机 / 候选冻结 / SEC-04 / REL / README
+
+- **用户授权「全部操作」**（push/Release 仍按 Q07 保留 —— 本地交付不默认含公开发布）。
+- **刷机（设备版本 == 交付产物）**：出厂备份 `factory-flash-8MB.bin`（SHA-256 `752a3dee…`，`image-info`→`App version 9c9e346-dirty`，**valid**）→ 刷无 `0x7F` 固件（`Hash of data verified`）→ 串口启动 **`App version: 5ad8547`**、`selftest PASS`、ES8311 ready、BLE advertising、display OK。→ REL-02 备份/升级部分。
+- **候选版本冻结**：`git tag m6-candidate-20260927`（代码同 `5ad8547`；后续仅文档提交）。
+- **SEC-04 隐私报告**：无 Key/音频/转写入库；凭据在仓库外；**⚠ 发现并脱敏 1 处明文设备 MAC**（`evidence/M5/…PERF-02…`）；**待决**：Q04 语料含绝对本地路径 → 出脱敏副本（不改冻结件）。
+- **REL-01—04**：REL-02 🟡（备份有效+升级成功；**回退演练未做**）；REL-01/04 🟡 部分；REL-03 🔴 未执行。→ [证据](./evidence/M6/2026-09-27-REL-01—04-交付就绪.md)。
+- **NOTICE**：esp-opus `LICENSE_PLEASE_READ.txt` 全文实读；许可归集定为 `licenses/`（未建）。
+- **README §6**：安装/配对/Key/启动/使用/退出/USB 恢复。
+- **顺带**：刷机后 `state_host` 曾瞬时重连失败（Windows BLE 幽灵链路，`hresult_error 0x800704C7`）→ 重启 launcher 后恢复（rev 560→561）；固件行为与刷机前同。
+- **提交**：`0b30094`（脱敏）/`b59dc5d`（SEC-04+NOTICE）/`d061c78`（REL）/`378e972`（README）。
