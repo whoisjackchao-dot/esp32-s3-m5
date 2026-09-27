@@ -9,7 +9,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| **源码版本** | git `5ad85475b4b88eb510f481fe8185ab43dac90d28`（2026-09-27） |
+| **源码版本** | git `d83bb2c`（2026-09-27；含 S4.4+ 双声提示） |
 | 工作树 | **干净**（`git status --porcelain` 为空 → HEAD == 构建所用工作树） |
 | 交付形态 | **本地目录**（未建仓 / 未 push / 未 Release；Q07 未授权） |
 | 逐字节可复现 | **未声称、未批准**（见 §6） |
@@ -35,9 +35,11 @@
 
 | 文件 | 大小 | SHA-256 |
 | --- | --- | --- |
-| `bootloader.bin` | 20832 | `bb5394f1cda44785d3ae1cdea0328ca703e4d8bfcccf5101f01dc40df444d926` |
+| `bootloader.bin` | 20832 | `09e4c0e970f5bf08d48d63cbeb2853af1b9bd2d0e42279ed6680668127208b9c` |
 | `partition-table.bin` | 3072 | `7f00b6c042a89b15b0cac534f82ed988caf29278ff5700b0c511eb1b5bb7c820` |
-| `sticks3.bin` | 739520 | `041b5011b86656ac3eb74581fea1e3d3da0d0fd2f901ec04ef47aeae34606d17` |
+| `sticks3.bin` | 739520 | `3045b874f4d63a5c9d909e256d5d27a3a446b83d3ec3fa112d88bf90246498d7` |
+
+> 2026-09-27 更新：加入 S4.4+ 双声提示后重刷，`sticks3.bin` 变更。**观察**：bootloader 在不同构建（clean vs 增量）间**哈希不同** → 佐证"逐字节可复现未声称"。
 
 > 产物清单与哈希另有 `flash-artifacts/SHA256SUMS`（单一真相源）。分区/偏移/恢复见 `tools/USB刷写清单.md`。
 
@@ -56,7 +58,7 @@
 
 | 组件 | 范围 | 聚合 SHA-256 |
 | --- | --- | --- |
-| 固件源码 | `firmware/sticks3/main/**`（`*.c`/`*.h`，排除生成字体表） | `51eb0a108781d8885915619c856c2d3b115e03841714b5c94331ed4f1a7324ad` |
+| 固件源码 | `firmware/sticks3/main/**`（`*.c`/`*.h`，排除生成字体表） | `643ea4910517b99aa326d721bf3bd322d770c4c65765e0c4a7385631087ea60a` |
 | 主机源码 | `host/src/*.{c,h,cpp}` | `ba7e40bc50e629272ed6804f1ecd97fbf86301b0648c1d693c93daa7fa901faf` |
 | 插件源码 | `plugin/{src,test}/**/*.ts` | `d14e771377694a92591a39f3f47aa9b1d7feafaf11d65dc6b006e09c83be30b0` |
 | 契约 | `contracts/*.md` | `2093a14975d85ffaf72c04c9be7cbe6ef1dfb5ccf69e1c1efc85f9959d414e92` |
