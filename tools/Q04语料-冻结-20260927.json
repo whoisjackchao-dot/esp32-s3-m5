@@ -1,0 +1,368 @@
+{
+  "content_hash": "126b33ab6be9613125702c51fda4fa2abf2de3783effca17e5724b5507a9dcf5",
+  "frozen_at": "2026-09-27T05:41:19+00:00",
+  "samples": [
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 5.76,
+      "id": "q04-01",
+      "key_slots": {
+        "action_object": "删除",
+        "file_path": "src/main.c",
+        "negation": "不要",
+        "number": "12"
+      },
+      "language": "zh-CN",
+      "reference_text": "不要删除 src/main.c 里的第 12 行",
+      "speaker_authorized": true,
+      "technical_words": [
+        "src/main.c"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-01.wav",
+      "wav_sha256": "d2f367da5a84e8aa92576ee39e46bd0ef257146b20541932f3e46a780ae65967"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [
+        "API Key"
+      ],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 6.24,
+      "id": "q04-02",
+      "key_slots": {
+        "action_object": "写进",
+        "file_path": "config.json",
+        "negation": "别",
+        "number": "5"
+      },
+      "language": "zh-CN",
+      "reference_text": "别把密钥写进 config.json 的第 5 行",
+      "speaker_authorized": true,
+      "technical_words": [
+        "config.json",
+        "密钥"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-02.wav",
+      "wav_sha256": "9383be3dfeb5f8494b0ec2da3f3f64e3747dda2dde7e32b87e3801fdf74d85ae"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 4.92,
+      "id": "q04-03",
+      "key_slots": {
+        "action_object": "修改",
+        "file_path": "app.ts",
+        "negation": "不要",
+        "number": "300"
+      },
+      "language": "zh-CN",
+      "reference_text": "未提交前不要修改 app.ts 的第 300 行",
+      "speaker_authorized": true,
+      "technical_words": [
+        "app.ts"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-03.wav",
+      "wav_sha256": "f9bd6dbb000e7ca1f9edc2c6147de2c513adc0f8531e6b841f7f081b6d3d5292"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 7.98,
+      "id": "q04-04",
+      "key_slots": {
+        "action_object": "加",
+        "file_path": "build.gradle",
+        "negation": "勿",
+        "number": "2.10.1"
+      },
+      "language": "zh-CN",
+      "reference_text": "勿在 build.gradle 里加 2.10.1 版本号",
+      "speaker_authorized": true,
+      "technical_words": [
+        "build.gradle",
+        "2.10.1"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-04.wav",
+      "wav_sha256": "43465ccf602e0d9a6a3ceb9cec8c6794831b7ddec668149e75881f8b7729ac0b"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 5.82,
+      "id": "q04-05",
+      "key_slots": {
+        "action_object": "重写",
+        "file_path": "README.md",
+        "negation": "不要",
+        "number": "8"
+      },
+      "language": "zh-CN",
+      "reference_text": "不要重写 README.md 的前 8 行",
+      "speaker_authorized": true,
+      "technical_words": [
+        "README.md"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-05.wav",
+      "wav_sha256": "ad0837469ac1e6c8e3a11fc0e3f7da37d218ef1a77c6158874566f916612352b"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 7.98,
+      "id": "q04-06",
+      "key_slots": {
+        "action_object": "删掉",
+        "file_path": "utils.py",
+        "negation": "别",
+        "number": "42"
+      },
+      "language": "zh-CN",
+      "reference_text": "别在 utils.py 删掉第 42 行的判断",
+      "speaker_authorized": true,
+      "technical_words": [
+        "utils.py"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-06.wav",
+      "wav_sha256": "4cab88e822bc4fa6282be76a195fa88beafce55c2aeab65c52f50eccfa5c7634"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 6.36,
+      "id": "q04-07",
+      "key_slots": {
+        "action_object": "跳过",
+        "file_path": "test_api.py",
+        "negation": "不要",
+        "number": "7"
+      },
+      "language": "zh-CN",
+      "reference_text": "不要跳过 test_api.py 的第 7 个用例",
+      "speaker_authorized": true,
+      "technical_words": [
+        "test_api.py"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-07.wav",
+      "wav_sha256": "5cc95a50078ec1f14a538692a027b8a85cde628d56f3aeae0cf343f8fa8a5354"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [
+        "commit"
+      ],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 6.48,
+      "id": "q04-08",
+      "key_slots": {
+        "action_object": "合并",
+        "file_path": "feature/login",
+        "negation": "不要",
+        "number": "3"
+      },
+      "language": "zh-CN",
+      "reference_text": "未测试前不要合并 feature/login 的 3 个提交",
+      "speaker_authorized": true,
+      "technical_words": [
+        "feature/login",
+        "提交"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-08.wav",
+      "wav_sha256": "3e7ddcd96599445b094fc6e82ce9017ff927ce39045cd6057f576eb4435e5c65"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 4.62,
+      "id": "q04-09",
+      "key_slots": {
+        "action_object": "留",
+        "file_path": "server.go",
+        "negation": "不要",
+        "number": "88"
+      },
+      "language": "zh-CN",
+      "reference_text": "不要把 debug 留在 server.go 的第 88 行",
+      "speaker_authorized": true,
+      "technical_words": [
+        "debug",
+        "server.go"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-09.wav",
+      "wav_sha256": "5da48dde6bbbf906aa9b8f033b550a2f12a3b693596eab115daa98a5da13a455"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 6.3,
+      "id": "q04-10",
+      "key_slots": {
+        "action_object": "改",
+        "file_path": "Dockerfile",
+        "negation": "别",
+        "number": "8080"
+      },
+      "language": "zh-CN",
+      "reference_text": "别改 Dockerfile 里 PORT 的 8080",
+      "speaker_authorized": true,
+      "technical_words": [
+        "Dockerfile",
+        "PORT",
+        "8080"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-10.wav",
+      "wav_sha256": "21ea3085ebed25449dd2e02353aca2133e58312ca99a27cf51c282cdcf82a80c"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 6.66,
+      "id": "q04-11",
+      "key_slots": {
+        "action_object": "加",
+        "file_path": "package.json",
+        "negation": "不要",
+        "number": "1.5.0"
+      },
+      "language": "zh-CN",
+      "reference_text": "不要忘记在 package.json 加 v1.5.0 依赖",
+      "speaker_authorized": true,
+      "technical_words": [
+        "package.json",
+        "v1.5.0"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-11.wav",
+      "wav_sha256": "0920e479ed75a52c0c499ca26f7851ee8b3c08147f34271cd0d12cbffac9c089"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 5.7,
+      "id": "q04-12",
+      "key_slots": {
+        "action_object": "删除",
+        "file_path": "index.html",
+        "negation": "勿",
+        "number": "20"
+      },
+      "language": "zh-CN",
+      "reference_text": "勿删除 index.html 第 20 行的 id",
+      "speaker_authorized": true,
+      "technical_words": [
+        "index.html",
+        "id"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-12.wav",
+      "wav_sha256": "6d5a6d802f0a936d74a35e44a46a267e9254e2942fbc87c1fbb74cc7fa1beb83"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 5.52,
+      "id": "q04-13",
+      "key_slots": {
+        "action_object": "执行",
+        "file_path": "db.sql",
+        "negation": "不要",
+        "number": "3"
+      },
+      "language": "zh-CN",
+      "reference_text": "不要在 db.sql 的第 3 段执行 DROP",
+      "speaker_authorized": true,
+      "technical_words": [
+        "db.sql",
+        "DROP"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-13.wav",
+      "wav_sha256": "0efd411086bb25721454550d4d4b10554c6e7492dbcd01ac64c33a12461ba15b"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 6.54,
+      "id": "q04-14",
+      "key_slots": {
+        "action_object": "降",
+        "file_path": "log.py",
+        "negation": "别",
+        "number": "15"
+      },
+      "language": "zh-CN",
+      "reference_text": "别把 log.py 第 15 行的级别从 WARN 降到 DEBUG",
+      "speaker_authorized": true,
+      "technical_words": [
+        "log.py",
+        "WARN",
+        "DEBUG"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-14.wav",
+      "wav_sha256": "9cedf118e1f7a4cabd9501cb2a4a05a6926ff805614dcc5f4671e57d0d85be2d"
+    },
+    {
+      "_组": "编程口述",
+      "acceptable_equivalents": [],
+      "ambient_noise": "安静室内",
+      "audio_environment": "办公室工位 0.5m 无遮挡",
+      "device_distance_m": 0.5,
+      "duration_s": 5.52,
+      "id": "q04-15",
+      "key_slots": {
+        "action_object": "动",
+        "file_path": "migrations/002.sql",
+        "negation": "不要",
+        "number": "2"
+      },
+      "language": "zh-CN",
+      "reference_text": "未备份前不要动 migrations/002.sql",
+      "speaker_authorized": true,
+      "technical_words": [
+        "migrations/002.sql"
+      ],
+      "wav": "C:\\Users\\home\\esp32-s3-m5\\captures\\q04\\q04-15.wav",
+      "wav_sha256": "8c216aae36e445c6a2ff7ff86d2e5302db807f28451209059c79a1915f60fd39"
+    }
+  ],
+  "schema": "q04-corpus-frozen",
+  "schema_version": 1
+}
