@@ -10,7 +10,7 @@
 | `es8311-LICENSE.txt` | `espressif/es8311` | 1.0.0~1 | Apache-2.0 |
 
 ## 未包含（诚实登记）
-- **ESP-IDF v5.5.4 顶层许可**（Apache-2.0）与其**组件例外细目**：ESP-IDF 为独立大型依赖，未复制入本目录；交付时请连同 ESP-IDF 发行版一并提供，其例外细目**仍未逐组件复核**。
+- **ESP-IDF v5.5.4 顶层许可**（Apache-2.0）未复制入本目录；其**组件例外清单**见 [ESP-IDF-v5.5.4-component-exceptions.md](./ESP-IDF-v5.5.4-component-exceptions.md)（本机实测，2026-09-27）。交付时请连同 ESP-IDF 发行版一并提供。
 - 本项目原创代码见仓库根 [LICENSE](../LICENSE)（MIT）。
 - 插件 npm 依赖（37 条锁定）许可：见 `plugin/package-lock.json` 与 NOTICE §2.2，无 copyleft。
 - 字体 `font8x8_basic.h`：Public Domain（见文件头）。
