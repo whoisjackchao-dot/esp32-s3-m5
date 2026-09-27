@@ -140,3 +140,15 @@ M0（部分关闭：产品决策已批）→ M1 安全草稿通道 → M2 真实
 - **升级**：`write-flash` bootloader@`0x0` / partition-table@`0x8000` / `sticks3.bin@0x10000`。
 - **回退/恢复**：写回备份镜像（`write-flash --flash-size 8MB` 全文）。
 - 详见 [USB 刷写清单](./tools/USB刷写清单.md)。
+
+### 6.7 卸载 / 清理（按用户选择，REL-03）
+> 原则：只清本项目自己的东西；**不删**用户 OpenCode 会话、其他插件、其他凭据。
+
+1. **停止**：关闭托盘，或结束 `launcher.exe`（Job 一并终止 `state_host`/`tray`）。
+2. **移除插件**：从 OpenCode 插件加载处移除本项目插件（`plugin/`）。
+3. **删除程序文件**：按需删除 `host/`、`plugin/`、`firmware/`。
+4. **清理配置/凭据（按用户选择）**：
+   - 删除 `%LOCALAPPDATA%\sticks3\`（`host.json`、`logs\`）；
+   - 在 **Windows 凭据管理器**删除本项目的智谱 ASR Key；
+   - WSL 侧删除 `~/.local/share/sticks3-opencode/bridge.json`。
+5. **设备**：可保留固件；如需还原，按 §6.6 写回出厂镜像。
