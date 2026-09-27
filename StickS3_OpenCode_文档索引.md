@@ -553,3 +553,12 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **顺带**：刷机后 `state_host` 曾瞬时重连失败（Windows BLE 幽灵链路，`hresult_error 0x800704C7`）→ 重启 launcher 后恢复（rev 560→561）；固件行为与刷机前同。
 - **安装后 E2E**：**非语音链自动验证 PASS**（桥接 `alive:true` / launcher→state_host→tray / BLE connected+subscribed / STATE 持续推送 / tray HEALTHY / 控制端点 `127.0.0.1:45910` 认证请求 OK）；**语音全流程 ⏸ BLOCKED**（需用户物理按住 BtnA 讲话）→ [证据](./evidence/M6/2026-09-27-安装后真实E2E.md)。
 - **提交**：`0b30094`（脱敏）/`b59dc5d`（SEC-04+NOTICE）/`d061c78`（REL）/`378e972`（README）/`89c9cef`（licenses）/`70146ff`（Q04 脱敏）。
+
+### 2026-09-27 工作登记（Sisyphus）—— 新功能：等待我回复时短响 2 声（S4.4+）
+
+- **需求**（用户，2026-09-27）：会话**阻塞等待我给出内容**（权限/问题对话框）时，设备短响 **2 声**。范围经确认＝**仅阻塞型提示**。
+- **实现**：`s3p_alert_beep_count(status)`（waiting=2 / error=1 / 其余 0，固件与 host 共享）+ `audio_capture_beep_n(n)`（150ms 音 + 120ms 间隔）+ `alert_task` 接线（录音中延后、过期不响）。**无契约/插件变更**（复用 `status=4 waiting`）。
+- **证据**：T＝变异 RED（`FAIL waiting -> 2 beeps`）→ GREEN（39/0）；D＝`idf.py build` exit 0；H＝串口 `alert: status=4 beeps=2` + 用户**两次**听声确认。→ [evidence/M6/2026-09-27-等待输入双声提示.md](./evidence/M6/2026-09-27-等待输入双声提示.md)。
+- **产物**：`flash-artifacts/sticks3.bin` = `3045b874…`（**已刷设备**）；源码 `d83bb2c`。
+- **提交**：`d1cb2dd`（策略+测试）/`d83bb2c`（双声接线）。
+- **待决**：是否也为 `session.idle`（助手说完）或"完成"事件加提示音（当前不做）。
