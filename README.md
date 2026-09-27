@@ -105,3 +105,38 @@ M0（部分关闭：产品决策已批）→ M1 安全草稿通道 → M2 真实
 **M4、M5 已关闭**（2026-09-27，用户裁定）；**M6 进行中**：S-M6-2（可复现构建 + manifest）已完成，剩余 NOTICE 残余 / 隐私报告 / REL-01—04 / 安装后真实 E2E。
 
 详见 [交付节点与完成定义](./StickS3_OpenCode_交付节点与完成定义.md)。
+
+## 6. 安装与使用（交付说明）
+
+> 刷写/恢复细节见 [USB 刷写清单](./tools/USB刷写清单.md)；ASR Key 见 [智谱ASR 配置快速指南](./智谱ASR_API配置快速指南.md)；可复现构建与哈希见 [M6-交付manifest](./M6-交付manifest.md)。
+
+### 6.1 前置
+- Windows 10/11 **普通用户**（**无需管理员**；不改防火墙/代理/TLS）。
+- WSL（Ubuntu）内运行 OpenCode + 本项目插件（提供桥接）。
+- USB Type-C 数据线 + M5Stack StickS3；智谱 BigModel 中国站账号（`glm-asr-2512` 权限）。**音频会上传云端、可能计费。**
+
+### 6.2 安装
+1. **主机程序**：`host/src/` 下的 `launcher.exe`（监督进程）、`state_host.exe`、`tray.exe` 需同目录；从该目录运行或加入 PATH。（exe 最终摆放布局待 M6 定。）
+2. **OpenCode 插件**：`cd plugin && npm install`，按插件机制加载（`plugin/src/`）。
+3. **固件**：首次使用按 [USB 刷写清单](./tools/USB刷写清单.md) 刷入 `flash-artifacts/` 三件套。
+
+### 6.3 配对（BLE）
+- 设备上电后广播服务 `22587f80-334a-53d6-beb8-8a6ace31af07`。
+- 首次在 Windows 蓝牙设置中配对；之后由 `state_host` 用同一 bond 自动重连。
+- 解绑重配：Windows 移除设备后重新配对（见 UI-01 记录）。
+
+### 6.4 API Key 配置
+- 用 `host/src/asr_cred_tool.exe` 将智谱 API Key 写入 **Windows 凭据管理器**（不入源码/命令行/日志/git；用法见其源码/`--help`）。
+- 轮换/撤销见指南 §5。
+
+### 6.5 启动 / 使用 / 退出
+- **启动**：先在 WSL 开 OpenCode（桥接写 `bridge.json`），再运行 `launcher.exe`（自动拉起 `state_host` + `tray`）。
+- **使用**：**按住 BtnA 讲话（≤30s）→ 松开自动转写 → 结果只追加到当前 OpenCode 草稿 → 你手动按 Enter 发送**。BtnB：翻页 / 取消。
+- **状态**：托盘 / 设备屏显示真实状态；断线自动重连。
+- **退出**：关闭托盘，或结束 `launcher.exe`（其 Job 会一并终止 state_host / tray）。
+
+### 6.6 USB 恢复（升级失败 / 回退）
+- **备份**：首次刷机前 `esptool read-flash 0 0x800000` 存出厂镜像（仓库外；本项目已存 `factory-flash-8MB.bin`）。
+- **升级**：`write-flash` bootloader@`0x0` / partition-table@`0x8000` / `sticks3.bin@0x10000`。
+- **回退/恢复**：写回备份镜像（`write-flash --flash-size 8MB` 全文）。
+- 详见 [USB 刷写清单](./tools/USB刷写清单.md)。
