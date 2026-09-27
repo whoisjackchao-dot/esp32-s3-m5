@@ -551,4 +551,5 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **NOTICE / 许可**：esp-opus `LICENSE_PLEASE_READ.txt` 全文实读；**`licenses/` 归集目录已建**（COPYING/LICENSE_PLEASE_READ/es8311 LICENSE 全文）；ESP-IDF 组件例外细目仍缺。
 - **README §6**：安装/配对/Key/启动/使用/退出/USB 恢复。
 - **顺带**：刷机后 `state_host` 曾瞬时重连失败（Windows BLE 幽灵链路，`hresult_error 0x800704C7`）→ 重启 launcher 后恢复（rev 560→561）；固件行为与刷机前同。
+- **安装后 E2E**：**非语音链自动验证 PASS**（桥接 `alive:true` / launcher→state_host→tray / BLE connected+subscribed / STATE 持续推送 / tray HEALTHY / 控制端点 `127.0.0.1:45910` 认证请求 OK）；**语音全流程 ⏸ BLOCKED**（需用户物理按住 BtnA 讲话）→ [证据](./evidence/M6/2026-09-27-安装后真实E2E.md)。
 - **提交**：`0b30094`（脱敏）/`b59dc5d`（SEC-04+NOTICE）/`d061c78`（REL）/`378e972`（README）/`89c9cef`（licenses）/`70146ff`（Q04 脱敏）。
