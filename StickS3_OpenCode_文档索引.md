@@ -571,3 +571,11 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **REL-03**：清理范围已核实；**完整卸载**需重启 TUI（会话依赖）→ 转独立会话。
 - **REL-02**：✅ 完整回退演练通过。
 - ⚠ **发布后纪律**：已推送的提交**不再改写**（`git` 历史已公开）；后续变更走新增提交。
+
+### 2026-09-27 工作登记（Sisyphus）—— 新命令 `/esp32-s3m5`（一键启动/拉起）
+
+- **新增命令** `/esp32-s3m5`（**全局** `~/.config/opencode/command/esp32-s3m5.md`，用户选择全局；**不在仓库**）：校验桥接 → 拉起主机栈 → 验证。
+- **新增脚本** [tools/start-sticks3.ps1](./tools/start-sticks3.ps1)（幂等）：① 查 `bridge.json`（桥接）+ tui.json 提示；② `launcher.exe` 未跑则拉起（自动带起 `state_host`+`tray`）；③ 验证进程/托盘/STATE。
+- **机制说明**：OpenCode command 是**提示词模板**（由 agent 执行脚本），且插件在 OpenCode 启动时加载、**运行时不能热加载**。
+- **验证**：停产品后运行脚本 → 成功拉起（`launcher 19444 / state_host 15140 / tray 1152`，`HEALTHY`，push 正常）。
+- **实现注意**：Windows PowerShell 以 GBK 读**无 BOM** 脚本 → 脚本**纯 ASCII**（沿用本机已知限制）。
