@@ -31,3 +31,6 @@ captures/
 
 # 屏幕模拟输出（可由 tools/gen_screen_mock.py 重新生成，不入库）
 screen_mock*.png
+
+# 托盘图标预览（可由 tools/gen_tray_icon.py 重新生成，不入库）
+tray_icon_preview.png

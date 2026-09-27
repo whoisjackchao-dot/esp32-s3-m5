@@ -10,6 +10,6 @@ if not defined VCVARS (echo VCVARS_NOT_FOUND & exit /b 1)
 call "%VCVARS%" >nul 2>&1
 if errorlevel 1 (echo VCVARS_FAIL & exit /b 1)
 cd /d "%~dp0"
-cl /nologo /W4 /utf-8 /std:c++20 /EHsc /DUNICODE /D_UNICODE /Fe:tray.exe tray.cpp /link user32.lib shell32.lib winhttp.lib
+cl /nologo /W4 /utf-8 /std:c++20 /EHsc /DUNICODE /D_UNICODE /Fe:tray.exe tray.cpp /link user32.lib shell32.lib winhttp.lib gdi32.lib
 if errorlevel 1 exit /b 1
 echo BUILD_OK

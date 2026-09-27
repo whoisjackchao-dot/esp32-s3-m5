@@ -9,9 +9,11 @@
 #include <winhttp.h>
 
 #include <cstdio>
+#include <cstring>
 #include <cwchar>
 #include <string>
 
+#include "tray_icon.h"
 #include "tray_parse.h"
 
 namespace {
@@ -238,19 +240,58 @@ void launch_cred_tool(const wchar_t* subcommand) {
     }
 }
 
+HICON g_tray_icon = nullptr;
+
+/* 由 tray_icon.h（tools/gen_tray_icon.py 生成）的 32x32 BGRA 位图建立 HICON。
+ * 32bpp + alpha → CreateIconIndirect；AND 掩码全 0。 */
+HICON create_tray_icon() {
+    const int W = 32, H = 32;
+    BITMAPINFO bi{};
+    bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bi.bmiHeader.biWidth = W;
+    bi.bmiHeader.biHeight = -H; /* 负高 = top-down */
+    bi.bmiHeader.biPlanes = 1;
+    bi.bmiHeader.biBitCount = 32;
+    bi.bmiHeader.biCompression = BI_RGB;
+    void* bits = nullptr;
+    HDC hdc = GetDC(nullptr);
+    HBITMAP color = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+    ReleaseDC(nullptr, hdc);
+    if (color == nullptr || bits == nullptr) {
+        if (color != nullptr) DeleteObject(color);
+        return nullptr;
+    }
+    std::memcpy(bits, TRAY_ICON_32, sizeof(TRAY_ICON_32));
+    BYTE mask_bits[32 * 8] = {0};
+    HBITMAP mask = CreateBitmap(W, H, 1, 1, mask_bits);
+    ICONINFO ii{};
+    ii.fIcon = TRUE;
+    ii.hbmColor = color;
+    ii.hbmMask = mask;
+    HICON ic = CreateIconIndirect(&ii);
+    DeleteObject(color);
+    DeleteObject(mask);
+    return ic;
+}
+
 void add_tray_icon(HWND hwnd) {
     g_nid.cbSize = sizeof(g_nid);
     g_nid.hWnd = hwnd;
     g_nid.uID = 1;
     g_nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     g_nid.uCallbackMessage = WM_TRAY;
-    g_nid.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+    g_tray_icon = create_tray_icon();
+    g_nid.hIcon = g_tray_icon != nullptr ? g_tray_icon : LoadIconW(nullptr, IDI_APPLICATION);
     wcscpy_s(g_nid.szTip, ARRAYSIZE(g_nid.szTip), L"StickS3 托盘");
     Shell_NotifyIconW(NIM_ADD, &g_nid);
 }
 
 void remove_tray_icon() {
     Shell_NotifyIconW(NIM_DELETE, &g_nid);
+    if (g_tray_icon != nullptr) {
+        DestroyIcon(g_tray_icon);
+        g_tray_icon = nullptr;
+    }
 }
 
 void show_menu(HWND hwnd) {
