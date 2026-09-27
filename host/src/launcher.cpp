@@ -311,6 +311,10 @@ int wmain() {
         SetEnvironmentVariableW(L"STICKS3_BRIDGE_JSON", bridge.c_str());
     }
 
+    /* 生产启用常驻 host 的 voice 编排（录音→解码→ASR→draft.append）；
+     * 缺此变量时 state_host 仅保留音频、不自动转写（见 M5 S-M5-1 发现）。 */
+    SetEnvironmentVariableW(L"STICKS3_HOST_VOICE", L"1");
+
     if (!create_kill_on_close_job()) {
         log_line("WARN job object unavailable (err=%lu) - children will not be auto-stopped",
                  GetLastError());
