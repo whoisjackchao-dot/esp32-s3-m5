@@ -529,3 +529,14 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **新增**：[M6-可复现完整本地交付-计划与就绪核查.md](./M6-可复现完整本地交付-计划与就绪核查.md)——M6 卡片 + **交付件清单(10项)** + 就绪核查(6 前置/阻塞) + 首故事。
 - **前置/阻塞**：**测试钩子清理**（固件 `0x7F`/host `DROP_TEST`/`LOAD_*`/`ASR_HOST`）· 候选版本冻结 · NOTICE 残余 · 隐私报告(SEC-04) · REL-01—04 · 安装后真实 E2E。
 - **首故事 S-M6-1**：测试钩子清理 + 候选版本冻结。
+
+### 2026-09-27 工作登记（Sisyphus）—— M6 S-M6-2 可复现构建 + manifest ✅
+
+- **用户裁定**：**开始 S-M6-2**；**交付形态 = 本地目录**（2026-09-27）。
+- **可复现构建（实测）**：固件 clean build **exit 0**（1352/1352，ESP-IDF v5.5.4-dirty）；插件 `bun test` **111/1skip/0fail** + `tsc` exit 0；主机 **19/19** `build_*.cmd` exit 0（`asr_transport` 需 mock-asr → **32/0**）。
+- **测试钩子/运行态**：3 个 exe 首轮 `LNK1104`（launcher/state_host/tray **正在运行**，PID 4344/7652/11408）→ 用户裁定「停→重建→重启」，重建全 `BUILD_OK`，重启后 `launcher 17592 / state_host 11180 / tray 13420`，STATE 推送 rev313→322、tray `HEALTHY`。
+- **`flash-artifacts/` 已更新**为无 `0x7F` 固件 + 重生 `SHA256SUMS`（`bootloader`→`bb5394…`、`sticks3.bin`→`041b50…`；`partition-table` 不变）。**设备未刷写**（待授权）。
+- **新增**：[M6-交付manifest.md](./M6-交付manifest.md)（版本标识/精确环境/产物+源码+依赖 SHA-256/复现步骤/边界）、[evidence/M6/2026-09-27-S-M6-2-可复现构建与manifest.md](./evidence/M6/2026-09-27-S-M6-2-可复现构建与manifest.md)。
+- **漂移更正**：README §2 环境表与实际不符（ESP-IDF 5.5.5→**5.5.4-dirty**、Bun 1.2.23→**1.4.2**、Node v24.19.0→**v24.15.0**、MSVC 14.44→**14.29**）——已按实测更正；README §1/§5 陈旧状态一并更新。
+- **未闭合**：逐字节可复现未声称；设备未刷；源码/依赖未打 tag；NOTICE 残余 / 隐私报告(SEC-04) / REL-01—04 / 安装后真实 E2E。
+- **提交**：本次**未提交**（新增文档 + README/索引改动；按 README §4「不擅自 commit」待授权）。
