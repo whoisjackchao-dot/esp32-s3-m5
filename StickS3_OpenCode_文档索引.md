@@ -566,7 +566,7 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 ### 2026-09-27 工作登记（Sisyphus）—— 用户「4项全部授权」执行
 
 - **发布（推送）执行**：`git push origin main`（`f691c5b..d8d5347`）+ 两个 tag（`m6-candidate-20260927`、`m6-candidate-20260927-2`）→ 远端 `refs/heads/main = d8d5347`。**Q07 的"不推送"被本授权覆盖**。
-- **GitHub Release 未做**：`gh` 未登录（`gh auth login` 缺失）→ **阻塞**。
+- **GitHub Release 已创建**：`gh auth login`（设备码，账号 `whoisjackchao-dot`）→ `gh release create m6-candidate-20260927-3`（**prerelease**，附 `bootloader.bin`/`partition-table.bin`/`sticks3.bin`/`SHA256SUMS`/manifest）→ <https://github.com/whoisjackchao-dot/esp32-s3-m5/releases/tag/m6-candidate-20260927-3>。
 - **REL-01**：非干净机，**不可行**（记录替代证据，仍未达标）。
 - **REL-03**：清理范围已核实；**完整卸载**需重启 TUI（会话依赖）→ 转独立会话。
 - **REL-02**：✅ 完整回退演练通过。
