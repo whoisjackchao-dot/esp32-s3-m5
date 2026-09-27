@@ -500,6 +500,6 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 
 - **S-M5-1 首发现（修复）**：`launcher.cpp` 原**只设 `STICKS3_BRIDGE_JSON`**、未设 `STICKS3_HOST_VOICE` → 经 launcher 录音**不自动转写**（与产品核心不符）。**修复**（commit `a60b341`）：launcher 设 `STICKS3_HOST_VOICE=1`；重建 BUILD_OK。**复验通过**（下条）。
 - **S-M5-1 ✅ PASS（happy path）**：真实产品路径（修复后 launcher）录音→**自动**转写→追加**正确草稿**（host 日志 `voice: decoded -> wav` → `voice: append outcome=0 http=200`，**无手动 POST**）→用户手动发送。**launcher 修复被真实复验**。证据：[evidence/M5/2026-09-27-S-M5-1-E2E-01真实会话.md](./evidence/M5/2026-09-27-S-M5-1-E2E-01真实会话.md)。
-- **残余**：E2E-01p 人工发送待用户显式确认；E2E-02/03/04 未做；ASR 准确率（Q04）另测。
+- **E2E-01p ✅**（用户确认：文本自动出现在输入框、仅按回车发送）。**残余**：E2E-02/03/04 未做；ASR 准确率（Q04）另测。
 - **顺带完成**：托盘自定义图标（低像素 ESP32-S3，commit `d258428`）。
 
