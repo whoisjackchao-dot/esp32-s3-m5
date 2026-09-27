@@ -134,7 +134,7 @@ M0（部分关闭：产品决策已批）→ M1 安全草稿通道 → M2 真实
   - **一键启动**：OpenCode 全局命令 **`/esp32-s3m5`**（校验桥接 → 拉起主机栈 → 验证）；其调用的脚本为 [tools/start-sticks3.ps1](./tools/start-sticks3.ps1)（也可手动：`powershell -ExecutionPolicy Bypass -File tools/start-sticks3.ps1`）。
 - **使用**：**按住 BtnA 讲话（≤30s）→ 松开自动转写 → 结果只追加到当前 OpenCode 草稿 → 你手动按 Enter 发送**。BtnB：翻页 / 取消。
 - **状态**：托盘 / 设备屏显示真实状态；断线自动重连。
-- **退出**：关闭托盘，或结束 `launcher.exe`（其 Job 会一并终止 state_host / tray）。
+- **退出**：右键托盘 → **"退出"**（向 `launcher` 发停止事件，**整套退出**）；或直接结束 `launcher.exe`（其 Job 一并终止 state_host / tray）。
 
 ### 6.6 USB 恢复（升级失败 / 回退）
 - **备份**：首次刷机前 `esptool read-flash 0 0x800000` 存出厂镜像（仓库外；本项目已存 `factory-flash-8MB.bin`）。

@@ -588,3 +588,10 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **发现 2（登记升级）**：**多实例 `bridge.json` 覆盖实锤复发**（后启动实例霸占描述文件 → 转写进"另一个"实例）；已用**单实例**规避；建议单独立项根治（契约变更）。
 - **发现 3（Q04，不达标）**：技术词元自然语言化（`src/main.c` → "SRC斜线man点c"）——如实记录。
 - **M6 出口判据现状**：非语音链 PASS + **语音全流程 PASS（9/9）**；残余＝REL-01（干净机，不可行）/ REL-03（卸载）/ 托盘退出修复 / Q04 限制。**关闭由用户裁定**。
+
+### 2026-09-27 工作登记（Sisyphus）—— 修复：托盘"退出"整套退出
+
+- **发现**（E2E 步骤 9）：托盘"退出"仅退托盘，`launcher` 监督**自动重启**它 → 无法退出整套。
+- **修复**：`launcher.cpp` 建命名事件 `Global\StickS3LauncherStop`，主循环检测到置位即停止并终止子进程；`tray.cpp` 的 `IDM_EXIT` 先置位该事件再退出托盘。**ADR D4=a 不变**（仅新增停止信号）。
+- **验证**：启动 launcher → 置位事件 → 日志 `stop event signaled (tray exit) - shutting down` → `stopping` → `exit`；`launcher/state_host/tray` **全部退出**、端口 45910 释放、事件创建无 WARN。
+- **文档**：README §6.5、[E2E 证据 §7](./evidence/M6/2026-09-27-安装后真实E2E.md)。
