@@ -84,6 +84,10 @@ static volatile LONG g_drop_test_target = 0; /* 测试(S-M5-1/PERF-02)：state_h
 static volatile LONG g_drop_test_done = 0;
 static volatile LONG g_drop_armed = 0;
 static uint64_t g_drop_t0 = 0;
+static volatile LONG g_load_trigger_ms = 0; /* 测试(PERF-03)：周期录音触发（0=关） */
+static volatile LONG g_load_drop_ms = 0;    /* 测试(PERF-03)：周期断链（0=关） */
+static uint64_t g_last_load_trigger = 0;
+static uint64_t g_last_load_drop = 0;
 
 static void say(const char* msg) {
     std::printf("[state_host] %s\n", msg);
@@ -473,9 +477,12 @@ static void host_voice_worker(std::string cap) {
     body.resize(bl);
     asr_http_req_t req;
     memset(&req, 0, sizeof(req));
-    req.host = "open.bigmodel.cn";
-    req.port = 443;
-    req.secure = 1;
+    /* ASR 端点可被 env 覆盖（PERF-03 指向 mock-asr，避免真云计费）；默认仍为智谱。 */
+    const char* asr_host = std::getenv("STICKS3_ASR_HOST");
+    const char* asr_port = std::getenv("STICKS3_ASR_PORT");
+    req.host = (asr_host && *asr_host) ? asr_host : "open.bigmodel.cn";
+    req.port = (asr_port && std::atoi(asr_port) > 0) ? std::atoi(asr_port) : 443;
+    req.secure = (req.port == 443) ? 1 : 0;
     req.path = "/api/paas/v4/audio/transcriptions";
     req.method = "POST";
     req.api_key = key;
@@ -758,6 +765,12 @@ static int run_host() {
         if (hp && std::atoi(hp) > 0) g_host_port = std::atoi(hp);
         const char* dtest = std::getenv("STICKS3_HOST_DROP_TEST");
         if (dtest && std::atoi(dtest) > 0) g_drop_test_target = std::atoi(dtest);
+        const char* lt = std::getenv("STICKS3_HOST_LOAD_TRIGGER_MS");
+        if (lt && std::atoi(lt) > 0) g_load_trigger_ms = std::atoi(lt);
+        const char* ld = std::getenv("STICKS3_HOST_LOAD_DROP_MS");
+        if (ld && std::atoi(ld) > 0) g_load_drop_ms = std::atoi(ld);
+        g_last_load_trigger = GetTickCount64();
+        g_last_load_drop = GetTickCount64();
         std::thread(http_thread).detach();
         write_host_descriptor();
     }
@@ -893,6 +906,44 @@ static int run_host() {
                         if (in.revision == g_last_rev) continue;
                         if (push_state(ctrl, in)) {
                             g_last_rev = in.revision;
+                            if (g_load_drop_ms > 0 || g_load_trigger_ms > 0) {
+                                if (g_drop_armed != 0 && g_load_drop_ms > 0) {
+                                    std::printf("[state_host] LOAD recovered delta_ms=%llu\n",
+                                                (unsigned long long)(GetTickCount64() - g_drop_t0));
+                                    std::fflush(stdout);
+                                    g_drop_armed = 0;
+                                }
+                                if (g_load_drop_ms > 0 && g_drop_armed == 0 &&
+                                    GetTickCount64() - g_last_load_drop >= (uint64_t)g_load_drop_ms) {
+                                    const uint8_t dd[1] = {0x7F};
+                                    Buffer wb(1);
+                                    wb.Length(1);
+                                    std::memcpy(wb.data(), dd, 1);
+                                    g_drop_t0 = GetTickCount64();
+                                    g_last_load_drop = g_drop_t0;
+                                    g_drop_armed = 1;
+                                    std::printf("[state_host] LOAD drop\n");
+                                    std::fflush(stdout);
+                                    try {
+                                        (void)ctrl.WriteValueAsync(wb, GattWriteOption::WriteWithResponse).get();
+                                    } catch (...) {
+                                    }
+                                }
+                                if (g_load_trigger_ms > 0 &&
+                                    GetTickCount64() - g_last_load_trigger >= (uint64_t)g_load_trigger_ms) {
+                                    const uint8_t rd[4] = {0x10, 1, 0xF7, 0x00};
+                                    Buffer wb(4);
+                                    wb.Length(4);
+                                    std::memcpy(wb.data(), rd, 4);
+                                    g_last_load_trigger = GetTickCount64();
+                                    std::printf("[state_host] LOAD trigger\n");
+                                    std::fflush(stdout);
+                                    try {
+                                        (void)ctrl.WriteValueAsync(wb, GattWriteOption::WriteWithResponse).get();
+                                    } catch (...) {
+                                    }
+                                }
+                            }
                             if (g_drop_test_target > 0 && g_drop_test_done < g_drop_test_target) {
                                 if (g_drop_armed != 0) {
                                     const uint64_t dt = GetTickCount64() - g_drop_t0;
