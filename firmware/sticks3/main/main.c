@@ -158,11 +158,11 @@ static void audio_path_evidence(void) {
     }
 }
 
-/* S4.4：进入「等待/错误」各响一次；录音中延后；过期快照不响（设计 §310 / M4 不变量）。 */
+/* S4.4+：进入「等待/错误」提示——等待(需回复)响 2 声、错误响 1 声；录音中延后；过期快照不响。 */
 static void alert_task(void *arg) {
     (void)arg;
     uint8_t prev = (uint8_t)S3P_STATUS_UNKNOWN;
-    bool pending = false;
+    uint8_t pending_beeps = 0u;
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(100));
         const bool valid = ble_gatt_host_state_valid();
@@ -171,20 +171,24 @@ static void alert_task(void *arg) {
         const bool expired = (flags & S3P_FLAG_EXPIRED) != 0u;
         const bool alert =
             valid && !expired && (st == S3P_STATUS_WAITING || st == S3P_STATUS_ERROR);
+        const uint8_t beeps = (valid && !expired) ? s3p_alert_beep_count(st) : 0u;
         const bool was_alert = (prev == S3P_STATUS_WAITING || prev == S3P_STATUS_ERROR);
         if (alert && !was_alert) {
             note_activity();
             if (audio_session_active()) {
-                pending = true;
+                pending_beeps = beeps;
             } else {
-                audio_capture_beep();
+                audio_capture_beep_n(beeps);
+                ESP_LOGI(TAG, "alert: status=%u beeps=%u", (unsigned)st, (unsigned)beeps);
             }
         }
-        if (pending && !audio_session_active()) {
+        if (pending_beeps > 0u && !audio_session_active()) {
             if (alert) {
-                audio_capture_beep();
+                audio_capture_beep_n(pending_beeps);
+                ESP_LOGI(TAG, "alert: status=%u beeps=%u (deferred)", (unsigned)st,
+                         (unsigned)pending_beeps);
             }
-            pending = false;
+            pending_beeps = 0u;
         }
         prev = st;
     }

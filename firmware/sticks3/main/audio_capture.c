@@ -301,3 +301,17 @@ esp_err_t audio_capture_beep(void) {
     pm1_es8311(false); /* 关功放 → 杜绝残留长鸣 */
     return ESP_OK;
 }
+
+esp_err_t audio_capture_beep_n(uint32_t n) {
+    esp_err_t err = ESP_OK;
+    for (uint32_t i = 0; i < n; ++i) {
+        if (i > 0u) {
+            vTaskDelay(pdMS_TO_TICKS(120)); /* 声间静音，避免连成一声长响 */
+        }
+        err = audio_capture_beep();
+        if (err != ESP_OK) {
+            return err;
+        }
+    }
+    return err;
+}

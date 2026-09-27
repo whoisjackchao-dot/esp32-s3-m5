@@ -29,3 +29,6 @@ esp_err_t audio_capture_play(const int16_t *mono, size_t samples);
 
 /* 播放一声短提示音（1kHz / 150ms）。 */
 esp_err_t audio_capture_beep(void);
+
+/* 连响 n 声短提示音（每声 1kHz/150ms，声间 ~120ms 静音）；n=0 不响。 */
+esp_err_t audio_capture_beep_n(uint32_t n);
