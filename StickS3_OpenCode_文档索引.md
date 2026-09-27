@@ -502,4 +502,6 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **S-M5-1 ✅ PASS（happy path）**：真实产品路径（修复后 launcher）录音→**自动**转写→追加**正确草稿**（host 日志 `voice: decoded -> wav` → `voice: append outcome=0 http=200`，**无手动 POST**）→用户手动发送。**launcher 修复被真实复验**。证据：[evidence/M5/2026-09-27-S-M5-1-E2E-01真实会话.md](./evidence/M5/2026-09-27-S-M5-1-E2E-01真实会话.md)。
 - **E2E-01p ✅**（用户确认：文本自动出现在输入框、仅按回车发送）。**残余**：E2E-02/03/04 未做；ASR 准确率（Q04）另测。
 - **顺带完成**：托盘自定义图标（低像素 ESP32-S3，commit `d258428`）。
+- **E2E-03 受限跳过（2026-09-27，用户裁定）**：本 TUI 的"切会话"实为**另起 OpenCode 实例**（非单实例内切换活动会话）→ 无法触发 `target_mismatch`。**顺带修复**：`rand_op_id` 未 `srand` → opid 跨运行复用 → 插件回执窗口内误报 `conflict`（commit `076df42` 已修）。**顺带发现**：多实例 `bridge.json` 覆盖致旧实例 stale（已手动恢复）。插件侧 `target_mismatch` 有单测（core.test.ts:86），**端到端未验**。
+- **S-M5-1 状态**：✅ **PASS**（E2E-01 真实链 + E2E-01p 人工发送确认）；残余：E2E-02/04、Q04 准确率。
 
