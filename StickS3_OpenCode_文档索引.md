@@ -496,3 +496,10 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **首故事建议**：**S-M5-1 单一真实 OpenCode 会话全链 E2E**（E2E-01 真实版），闭合 M4 最大残余。
 - **待用户**：① 批准计划 + 首故事；② 提供 Q04 的 15 条语料（或授权用首轮 45 段真实语音为候选）；③ 批准 PERF-03/04 负载与时长口径。
 
+### 2026-09-27 工作登记（Sisyphus）—— M5 首故事 S-M5-1（E2E-01 真实会话）✅ + 首发现修复
+
+- **S-M5-1 首发现（修复）**：`launcher.cpp` 原**只设 `STICKS3_BRIDGE_JSON`**、未设 `STICKS3_HOST_VOICE` → 经 launcher 录音**不自动转写**（与产品核心不符）。**修复**（commit `a60b341`）：launcher 设 `STICKS3_HOST_VOICE=1`；重建 BUILD_OK。**复验通过**（下条）。
+- **S-M5-1 ✅ PASS（happy path）**：真实产品路径（修复后 launcher）录音→**自动**转写→追加**正确草稿**（host 日志 `voice: decoded -> wav` → `voice: append outcome=0 http=200`，**无手动 POST**）→用户手动发送。**launcher 修复被真实复验**。证据：[evidence/M5/2026-09-27-S-M5-1-E2E-01真实会话.md](./evidence/M5/2026-09-27-S-M5-1-E2E-01真实会话.md)。
+- **残余**：E2E-01p 人工发送待用户显式确认；E2E-02/03/04 未做；ASR 准确率（Q04）另测。
+- **顺带完成**：托盘自定义图标（低像素 ESP32-S3，commit `d258428`）。
+
