@@ -547,7 +547,7 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **刷机（设备版本 == 交付产物）**：出厂备份 `factory-flash-8MB.bin`（SHA-256 `752a3dee…`，`image-info`→`App version 9c9e346-dirty`，**valid**）→ 刷无 `0x7F` 固件（`Hash of data verified`）→ 串口启动 **`App version: 5ad8547`**、`selftest PASS`、ES8311 ready、BLE advertising、display OK。→ REL-02 备份/升级部分。
 - **候选版本冻结**：`git tag m6-candidate-20260927`（代码同 `5ad8547`；后续仅文档提交）。
 - **SEC-04 隐私报告**：无 Key/音频/转写入库；凭据在仓库外；**⚠ 发现并脱敏 1 处明文设备 MAC**（`evidence/M5/…PERF-02…`）；**Q04 语料绝对路径已出脱敏副本** `tools/Q04语料-冻结-20260927-脱敏.json`（冻结原件不改）。
-- **REL-01—04**：REL-02 🟡（备份有效+升级成功；**回退演练未做**）；REL-01/04 🟡 部分；REL-03 🔴 未执行。→ [证据](./evidence/M6/2026-09-27-REL-01—04-交付就绪.md)。
+- **REL-01—04**：REL-02 ✅（含**完整回退演练**：备份→`9c9e346`→重刷→`5ad8547`）；REL-01 🟡（本机非干净机，不可行）；REL-03 🟡（清理范围已核实；完整卸载需 TUI 重启，转独立会话）；REL-04 🟡（含 ESP-IDF 例外清单、Q04 脱敏副本）。→ [证据](./evidence/M6/2026-09-27-REL-01—04-交付就绪.md)。
 - **NOTICE / 许可**：esp-opus `LICENSE_PLEASE_READ.txt` 全文实读；**`licenses/` 归集目录已建**（COPYING/LICENSE_PLEASE_READ/es8311 LICENSE 全文）；**ESP-IDF v5.5.4 组件例外清单已出**（[licenses/ESP-IDF-v5.5.4-component-exceptions.md](./licenses/ESP-IDF-v5.5.4-component-exceptions.md)；链接进固件均 permissive，无 copyleft 进 app）。
 - **README §6**：安装/配对/Key/启动/使用/退出/USB 恢复。
 - **顺带**：刷机后 `state_host` 曾瞬时重连失败（Windows BLE 幽灵链路，`hresult_error 0x800704C7`）→ 重启 launcher 后恢复（rev 560→561）；固件行为与刷机前同。
