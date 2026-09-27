@@ -2,7 +2,7 @@
 
 > 一个蓝牙语音输入器 + OpenCode 状态屏：按住 StickS3 正面键讲话，转写结果**只追加**到正确的 OpenCode 草稿末尾，由用户自己按 Enter 发送。
 >
-> **当前状态：以 [文档索引](./StickS3_OpenCode_文档索引.md) 为准。** **M4 已于 2026-09-27 由用户裁定关闭**（见 [M4收口就绪核查.md](./M4收口就绪核查.md) §8）；M5（候选版本验证）/ M6（本地完整交付）尚未验收。设计文档见本目录 `.md` 文件。
+> **当前状态：以 [文档索引](./StickS3_OpenCode_文档索引.md) 为准。** **M4、M5 已于 2026-09-27 由用户裁定关闭**（见 [M4收口就绪核查.md](./M4收口就绪核查.md)、[M5收口就绪核查.md](./M5收口就绪核查.md)）；**M6（可复现完整本地交付）进行中**（S-M6-2 可复现构建 + manifest 已完成，见 [M6-交付manifest.md](./M6-交付manifest.md)）。设计文档见本目录 `.md` 文件。
 
 ## 1. 仓库结构
 
@@ -27,13 +27,13 @@
 
 | 模块 | 工具 | 已装版本 | 状态 |
 | --- | --- | --- | --- |
-| 插件 | Bun | 1.2.23 | ✅ |
-| 插件 | Node.js | v24.19.0 | ✅ |
-| 插件 | TypeScript | 5.9.x（devDependency） | ⏳ 待 `bun install` |
-| 插件 | `@opencode-ai/plugin` | 1.18.31（匹配已装 CLI） | ⏳ 待 `bun install` |
-| 主机 | MSVC (VS BuildTools 2022) | 14.44.35207 | ✅ |
+| 插件 | Bun | 1.4.2 | ✅ |
+| 插件 | Node.js | v24.15.0 | ✅ |
+| 插件 | TypeScript | 5.9.x（devDependency） | ✅（`npm install`） |
+| 插件 | `@opencode-ai/plugin` | 1.18.31（匹配已装 CLI） | ✅（`npm install`） |
+| 主机 | MSVC (VS BuildTools 2019) | 14.29.30133（cl 19.29.30159.0） | ✅ |
 | 主机 | CMake / Ninja | 随 VS BuildTools | ✅ |
-| 固件 | ESP-IDF | **v5.5.5**（release/v5.5） | ✅ |
+| 固件 | ESP-IDF | **v5.5.4-dirty**（release/v5.5） | ✅ |
 | 固件 | xtensa-esp-elf | 14.2.0_20260121 | ✅ |
 | 固件 | 目标芯片 | esp32s3 | ✅ |
 | 固件 | CMake / Ninja | 4.4.3 / 1.13.2（装在 ESP-IDF venv 内） | ✅ |
@@ -98,8 +98,10 @@ idf.py -B ~/esp-build/toolchain-check build
 - 设备不保存待重试录音；失败音频最多在主机内存保留 5 分钟。
 - 不擅自 `git commit` / `git push`；发布须另行授权（Q07）。
 
-## 5. 里程碑（当前全部未开始）
+## 5. 里程碑（进度）
 
-M0（部分关闭：产品决策已批，工程契约补齐中）→ M1 安全草稿通道 → M2 真实录音 → M3 真实 ASR → M4 状态屏与托盘 → M5 候选版本验证 → M6 本地完整交付。
+M0（部分关闭：产品决策已批）→ M1 安全草稿通道 → M2 真实录音 → M3 真实 ASR → M4 状态屏与托盘 → M5 候选版本验证 → **M6 本地完整交付（进行中）**。
+
+**M4、M5 已关闭**（2026-09-27，用户裁定）；**M6 进行中**：S-M6-2（可复现构建 + manifest）已完成，剩余 NOTICE 残余 / 隐私报告 / REL-01—04 / 安装后真实 E2E。
 
 详见 [交付节点与完成定义](./StickS3_OpenCode_交付节点与完成定义.md)。
