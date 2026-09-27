@@ -1,0 +1,261 @@
+{
+ "meta": {
+  "name": "ESP32-S3M5",
+  "since": "2026-09-24 23:02",
+  "until": "2026-09-27 17:04",
+  "days": 3,
+  "n_project": 26,
+  "n_main": 7,
+  "n_excl": 5,
+  "n_review": 0
+ },
+ "aggregate": {
+  "total": {
+   "input": 5144100,
+   "output": 950424,
+   "reasoning": 1867965,
+   "cache_read": 740964864,
+   "cache_write": 0
+  },
+  "total_all_tokens": 748927353,
+  "by_model": {
+   "deepseek/deepseek-flash": {
+    "tokens": {
+     "input": 4467738,
+     "output": 890565,
+     "reasoning": 1789361,
+     "cache_read": 738028160,
+     "cache_write": 0
+    },
+    "cost": 4.4922,
+    "cost_db": 4.4922,
+    "cost_est": 0.0,
+    "status": "billed",
+    "sessions": 7
+   },
+   "zhipuai-coding-plan/glm-5.3-flash": {
+    "tokens": {
+     "input": 676362,
+     "output": 59859,
+     "reasoning": 78604,
+     "cache_read": 2936704,
+     "cache_write": 0
+    },
+    "cost": 0.0665,
+    "cost_db": 0.0,
+    "cost_est": 0.0665,
+    "status": "estimated",
+    "sessions": 16
+   },
+   "volcengine-plan/deepseek-v4-flash": {
+    "tokens": {
+     "input": 0,
+     "output": 0,
+     "reasoning": 0,
+     "cache_read": 0,
+     "cache_write": 0
+    },
+    "cost": 0.0,
+    "cost_db": 0.0,
+    "cost_est": 0.0,
+    "status": "unknown",
+    "sessions": 1
+   },
+   "volcengine-coding-plan/kimi-k3": {
+    "tokens": {
+     "input": 0,
+     "output": 0,
+     "reasoning": 0,
+     "cache_read": 0,
+     "cache_write": 0
+    },
+    "cost": 0.0,
+    "cost_db": 0.0,
+    "cost_est": 0.0,
+    "status": "unknown",
+    "sessions": 2
+   }
+  },
+  "by_day": {
+   "2026-09-24": {
+    "input": 946634,
+    "output": 225082,
+    "reasoning": 401174,
+    "cache_read": 156457856,
+    "cache_write": 0
+   },
+   "2026-09-25": {
+    "input": 2553641,
+    "output": 360375,
+    "reasoning": 807967,
+    "cache_read": 288833408,
+    "cache_write": 0
+   },
+   "2026-09-26": {
+    "input": 351238,
+    "output": 33035,
+    "reasoning": 33854,
+    "cache_read": 1779072,
+    "cache_write": 0
+   },
+   "2026-09-27": {
+    "input": 1292587,
+    "output": 331932,
+    "reasoning": 624970,
+    "cache_read": 293894528,
+    "cache_write": 0
+   }
+  },
+  "cost_billed_real": 4.4922,
+  "cost_estimated_subscription": 0.0665,
+  "estimated_models_need_review": [
+   "zhipuai-coding-plan/glm-5.3-flash"
+  ],
+  "unknown_price_models_usage": {
+   "volcengine-plan/deepseek-v4-flash": 0,
+   "volcengine-coding-plan/kimi-k3": 0
+  },
+  "cache_hit_rate": 0.9931
+ },
+ "review": [],
+ "by_milestone": [
+  {
+   "id": "起步",
+   "title": "硬件选型与设计审阅(M0前)",
+   "basis": "首会话 09-11 16:26 分析C:\\Temp\\ESP32文档; 09-15 集中审阅",
+   "date": "2026-09-11",
+   "tokens": {},
+   "total": 0,
+   "cost_db": 0.0,
+   "cost_est": 0.0,
+   "n_sessions": 0,
+   "n_subagent": 0,
+   "active_days": 0,
+   "span_days": 1,
+   "tokens_per_active_day": 0
+  },
+  {
+   "id": "M0",
+   "title": "可测试需求与决策基线",
+   "basis": "开发准备就绪核查.md(2026-09-20); 开发骨架与契约冻结(2026-09-20)",
+   "date": "2026-09-20",
+   "tokens": {},
+   "total": 0,
+   "cost_db": 0.0,
+   "cost_est": 0.0,
+   "n_sessions": 0,
+   "n_subagent": 0,
+   "active_days": 0,
+   "span_days": 9,
+   "tokens_per_active_day": 0
+  },
+  {
+   "id": "M1",
+   "title": "安全草稿通道最小闭环",
+   "basis": "09-21 TDD波次完成(Core state machine/Bridge HTTP/TUI plugin/Windows host entry, 15:43最后波次); M2演示前桥接已通",
+   "date": "2026-09-21",
+   "tokens": {},
+   "total": 0,
+   "cost_db": 0.0,
+   "cost_est": 0.0,
+   "n_sessions": 0,
+   "n_subagent": 0,
+   "active_days": 0,
+   "span_days": 1,
+   "tokens_per_active_day": 0
+  },
+  {
+   "id": "M2",
+   "title": "真实StickS3录音到Windows内存",
+   "basis": "evidence/M2/2026-09-22-M2演示执行记录.md",
+   "date": "2026-09-22",
+   "tokens": {},
+   "total": 0,
+   "cost_db": 0.0,
+   "cost_est": 0.0,
+   "n_sessions": 0,
+   "n_subagent": 0,
+   "active_days": 0,
+   "span_days": 1,
+   "tokens_per_active_day": 0
+  },
+  {
+   "id": "M3",
+   "title": "真实语音→智谱→指定草稿(核心闭环)",
+   "basis": "evidence/M3/2026-09-23-162541-M3人工闭环确认.md; 2026-09-23-M3故事4纵切闭环.md; 追加草稿一跳待完成",
+   "date": "2026-09-23",
+   "tokens": {},
+   "total": 0,
+   "cost_db": 0.0,
+   "cost_est": 0.0,
+   "n_sessions": 0,
+   "n_subagent": 0,
+   "active_days": 0,
+   "span_days": 1,
+   "tokens_per_active_day": 0
+  },
+  {
+   "id": "M4",
+   "title": "可日常使用的状态屏与托盘",
+   "basis": "git 2673bd9 'M4 关闭(用户 2026-09-27 裁定)'(08:10); 08:12 起 M5(109600f)",
+   "date": "2026-09-27T08:10",
+   "tokens": {
+    "input": 4165300,
+    "output": 804093,
+    "reasoning": 1607026,
+    "cache_read": 657809408,
+    "cache_write": 0
+   },
+   "total": 664385827,
+   "cost_db": 3.9117,
+   "cost_est": 0.048,
+   "n_sessions": 19,
+   "n_subagent": 14,
+   "active_days": 4,
+   "span_days": 3,
+   "tokens_per_active_day": 166096456
+  },
+  {
+   "id": "M5",
+   "title": "候选版本验证",
+   "basis": "git d317fd2 'M5 关闭(用户 2026-09-27 裁定)'(15:28, NOT_RUN 清零: UI-01 15:27/PERF-04 15:23/E2E-02 13:54)",
+   "date": "2026-09-27T15:28",
+   "tokens": {
+    "input": 0,
+    "output": 0,
+    "reasoning": 0,
+    "cache_read": 0,
+    "cache_write": 0
+   },
+   "total": 0,
+   "cost_db": 0.0,
+   "cost_est": 0.0,
+   "n_sessions": 1,
+   "n_subagent": 1,
+   "active_days": 1,
+   "span_days": 1,
+   "tokens_per_active_day": 0
+  },
+  {
+   "id": "M6",
+   "title": "可复现完整本地交付",
+   "basis": "用户 2026-09-27 裁定: 跳过 M6 剩余项(不影响使用)、项目结项; 见 项目结项报告-2026-09-27.md",
+   "date": "2026-09-27T17:00",
+   "tokens": {
+    "input": 978800,
+    "output": 146331,
+    "reasoning": 260939,
+    "cache_read": 83155456,
+    "cache_write": 0
+   },
+   "total": 84541526,
+   "cost_db": 0.5805,
+   "cost_est": 0.0184,
+   "n_sessions": 6,
+   "n_subagent": 4,
+   "active_days": 1,
+   "span_days": 1,
+   "tokens_per_active_day": 84541526
+  }
+ ]
+}
