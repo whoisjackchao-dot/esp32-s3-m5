@@ -507,4 +507,5 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **PERF-02 ✅ PASS（2026-09-27，两侧）**：
   - **链路版**：20/20 ≤15s（worst **1.684s**）；工具 `tools/perf02_reconnect.py`（`0x7F` 断链）。证据：[evidence/M5/2026-09-27-PERF-02断线恢复.md](./evidence/M5/2026-09-27-PERF-02断线恢复.md)。
   - **产品版**（`state_host` 自身重连+STATE复原）：20/20 ≤15s（worst **10.032s**）；`state_host` 加 env 门控自断链模式 `STICKS3_HOST_DROP_TEST`。**观察**：Δ 稳定 ~10.0s → host 重连路径有 **~8s 固定延迟**（达标但裕度薄，待优化）。**测试钩子 M6 前须移除/登记**。证据：[evidence/M5/2026-09-27-产品侧PERF-02-state_host重连.md](./evidence/M5/2026-09-27-产品侧PERF-02-state_host重连.md)。
+- **PERF-03 ✅ PASS（2026-09-27）**：**2h 连续、0 崩溃**；负载 **23 trigger + 7/7 断线恢复**；host 内存 **+520KB/2h**、设备堆 **+352B**（稳定）。harness `tools/perf03_stability.ps1`。**未自动追加 8h**（用户裁定）。证据：[evidence/M5/2026-09-27-PERF-03稳定性.md](./evidence/M5/2026-09-27-PERF-03稳定性.md)。
 
