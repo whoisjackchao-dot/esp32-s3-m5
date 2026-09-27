@@ -60,8 +60,12 @@
 - 发布前执行 REL-04：自动检查产物哈希与来源，人工复核许可与敏感内容。
 - 不擅自向 GitHub 推送（Q07：先本地完整交付）。
 
-## 5. 仍未完成（诚实登记）
+## 5. 进展与仍未完成（诚实登记）
 
-- ESP-IDF 的**组件例外清单**（Apache-2.0 之外部分组件的附加条款）**未逐组件复核**；`78/esp-opus` 的 `LICENSE_PLEASE_READ.txt` **全文未逐条审阅**。
-- 交付包内**许可文件的归集方式**（是否随包附 `COPYING`/`LICENSE` 副本）**未定**——属 M6 打包（REL-04）项。
+> 2026-09-27 更新（见 [evidence/M6/2026-09-27-SEC-04隐私报告与REL-04审查.md](./evidence/M6/2026-09-27-SEC-04隐私报告与REL-04审查.md)）。
+
+- `78/esp-opus` 的 `LICENSE_PLEASE_READ.txt` **全文已实读（2026-09-27）**：内容为贡献者许可声明（贡献按 **BSD 2/3-clause 或 Clear BSD** 授权）+ IETF IPR 链接（Xiph/Microsoft/Skype/Broadcom）；**须随交付包保留全文**。
+- **许可文件归集方式已定建议（2026-09-27）**：交付包含 `licenses/` 目录（附 `COPYING`/`LICENSE`/`LICENSE_PLEASE_READ.txt` 全文），并在本 NOTICE §2 标注来源版本。**该打包动作尚未执行**（属 M6 打包 / REL-04）。
+- **ESP-IDF 组件例外清单**（Apache-2.0 之外部分组件的附加条款）**仍未逐组件复核**。
 - M5Unified/M5GFX 的许可依据为**官方仓库声明（MIT）**，本仓未留许可副本。
+- **隐私脱敏**：`evidence/M5/2026-09-27-PERF-02断线恢复.md` 的明文设备 MAC 已掩码（2026-09-27）；Q04 语料的**绝对本地路径**待出脱敏副本（不改冻结件）。
