@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
+#include <random>
 #include <string>
 #include <thread>
 
@@ -353,9 +354,17 @@ static bool run_decode(const std::string& in, const std::string& out) {
 
 static std::string rand_op_id() {
     static const char* hex = "0123456789abcdef";
+    /* 不能裸用 std::rand()（未 srand → 每次运行序列相同 → opid 复用 → 插件回执窗口内误判 conflict）。 */
+    static std::mt19937_64 rng([] {
+        std::random_device rd;
+        std::seed_seq seq{rd(), rd(), static_cast<unsigned>(GetTickCount64()),
+                          static_cast<unsigned>(GetCurrentProcessId())};
+        return std::mt19937_64(seq);
+    }());
+    std::uniform_int_distribution<int> nib(0, 15);
     std::string id = "op_";
     for (int i = 0; i < 29; ++i) {
-        id += hex[std::rand() & 0xF];
+        id += hex[nib(rng)];
     }
     return id;
 }
@@ -498,6 +507,8 @@ static void host_voice_worker(std::string cap) {
                          GetTickCount());
     }
     const std::string opid = rand_op_id();
+    std::printf("[state_host] voice: append req op=%s sess=%s\n", opid.c_str(), sess.c_str());
+    std::fflush(stdout);
     char jb[16384];
     const size_t jl = append_build_request(g_epoch_name.c_str(), sess.c_str(), opid.c_str(), text, jb,
                                            sizeof(jb));
