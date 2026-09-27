@@ -2,6 +2,7 @@
   "name": "ESP32-S3M5",
   "_说明": "ESP32-S3M5 token 统计的本地配置。项目专属识别词固化在此(全局通用版脚本识别词为空); overrides: 会话id前缀 -> project|exclude。",
   "_overrides备注": "2026-09-24 人工复核: exclude=f4ddfe/f4ddd5/f4dc56/f4dc48(GPT接入测试), f3932e7(/dsh服务启动), f39109d/f390c3/f390c1/f390c0b(Dayu电纸书工具仓库上传与审计, 非本项目); project=f33babc/f33ba20(桥接插件重启生效核查), f33b0cd(项目工作时段会话), f334581(授权M3/M4三个任务), f334370/f333d5c/f33179a/f33181c/f331278(桥接插件致会话中断的排查与修复工作流), f38f042c4ffe(09-22 'dayu项目生命周期流程启动'实为本项目的dayu流程会话, 派生M5Unified/ES8311调查subagents, 因title含'dayu'被排除词误杀, 人工修正; 其6个子代理经parent链自动归project)",
+  "_overrides备注2": "2026-09-27 二次复核(现 DB 会话; 旧 f4/f3 前缀会话已不在库中, 保留仅为历史): exclude=f2bc29cddffe(倍控G30软路由立项, 首消息为/dayu命令文本, 误命中项目词'里程碑'), f2bc9ca8affe(火山coding plan可用性检查), f29770253ffe(本地部署并启动 DeepSeek harness); 三者均非本项目, 经内容核对后排除",
   "project_title_keywords": [
     "esp32",
     "s3m5",
@@ -90,6 +91,9 @@
     "f33181ce8ffe": "project",
     "f33179a77ffe": "project",
     "f33127843ffe": "project",
-    "f38f042c4ffe": "project"
+    "f38f042c4ffe": "project",
+    "f2bc29cddffe": "exclude",
+    "f2bc9ca8affe": "exclude",
+    "f29770253ffe": "exclude"
   }
 }
