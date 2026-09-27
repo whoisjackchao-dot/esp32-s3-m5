@@ -25,6 +25,7 @@ constexpr UINT IDM_KEY_DELETE = 1004;
 constexpr UINT IDM_EXIT = 1005;
 constexpr UINT IDM_RETRY_RECOGNIZE = 1006;
 constexpr UINT IDM_RETRY_APPEND = 1007;
+constexpr wchar_t kStopEventName[] = L"Global\\StickS3LauncherStop";
 
 NOTIFYICONDATAW g_nid{};
 UINT g_taskbar_created = 0;
@@ -341,9 +342,17 @@ LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
                 case IDM_RETRY_APPEND:
                     retry_action(L"/v1/retry/append", L"重试填入");
                     return 0;
-                case IDM_EXIT:
+                case IDM_EXIT: {
+                    /* 通知 launcher 停止整套（其 Job 终止 state_host/tray）；
+                     * 事件不存在时（tray 独立运行）退化为仅退出托盘。 */
+                    HANDLE ev = OpenEventW(EVENT_MODIFY_STATE, FALSE, kStopEventName);
+                    if (ev != nullptr) {
+                        SetEvent(ev);
+                        CloseHandle(ev);
+                    }
                     DestroyWindow(hwnd);
                     return 0;
+                }
                 default:
                     return 0;
             }

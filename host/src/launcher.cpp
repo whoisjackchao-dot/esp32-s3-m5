@@ -15,6 +15,7 @@
 namespace {
 
 constexpr wchar_t kMutexName[] = L"Global\\StickS3Launcher";
+constexpr wchar_t kStopEventName[] = L"Global\\StickS3LauncherStop";
 constexpr DWORD kDescriptorWaitMs = 10000;
 constexpr DWORD kPollMs = 250;
 constexpr ULONGLONG kRotateBytes = 1024ull * 1024ull;
@@ -24,6 +25,7 @@ constexpr unsigned kBackoffCapMs = 30000;
 constexpr ULONGLONG kStableResetMs = 60000;
 
 HANDLE g_job = nullptr;
+HANDLE g_stop_event = nullptr;
 volatile LONG g_stop = 0;
 
 ULONGLONG now_ms() {
@@ -295,6 +297,15 @@ int wmain() {
         return 2;
     }
 
+    /* 停止路径之一：托盘"退出"置位该命名事件 → 本进程停止并终止全部子进程。
+     * 与 on_console（Ctrl+C / 控制台关闭）并列；符合 D4=a「持句柄并终止」。 */
+    g_stop_event = CreateEventW(nullptr, TRUE, FALSE, kStopEventName);
+    if (g_stop_event != nullptr) {
+        ResetEvent(g_stop_event);
+    } else {
+        log_line("WARN stop event unavailable (err=%lu)", GetLastError());
+    }
+
     const std::wstring dir = exe_dir();
     const std::wstring logs = logs_dir();
     if (!logs.empty()) {
@@ -338,6 +349,10 @@ int wmain() {
     start_child(&children[1], dir, logs);
 
     while (InterlockedCompareExchange(&g_stop, 0, 0) == 0) {
+        if (g_stop_event != nullptr && WaitForSingleObject(g_stop_event, 0) == WAIT_OBJECT_0) {
+            log_line("stop event signaled (tray exit) - shutting down");
+            break;
+        }
         poll_children(children, 2);
         const ULONGLONG now = now_ms();
         for (size_t i = 0; i < 2; ++i) {
@@ -352,6 +367,7 @@ int wmain() {
     }
     log_line("stopping");
     stop_children(children, 2);
+    if (g_stop_event != nullptr) CloseHandle(g_stop_event);
     CloseHandle(mutex);
     log_line("exit");
     return 0;
