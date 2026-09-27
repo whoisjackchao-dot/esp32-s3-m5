@@ -504,4 +504,5 @@ Q04 判据 **BLOCKED**（详见契约 §8）。本轮**未**产生任何真实 A
 - **顺带完成**：托盘自定义图标（低像素 ESP32-S3，commit `d258428`）。
 - **E2E-03 受限跳过（2026-09-27，用户裁定）**：本 TUI 的"切会话"实为**另起 OpenCode 实例**（非单实例内切换活动会话）→ 无法触发 `target_mismatch`。**顺带修复**：`rand_op_id` 未 `srand` → opid 跨运行复用 → 插件回执窗口内误报 `conflict`（commit `076df42` 已修）。**顺带发现**：多实例 `bridge.json` 覆盖致旧实例 stale（已手动恢复）。插件侧 `target_mismatch` 有单测（core.test.ts:86），**端到端未验**。
 - **S-M5-1 状态**：✅ **PASS**（E2E-01 真实链 + E2E-01p 人工发送确认）；残余：E2E-02/04、Q04 准确率。
+- **PERF-02 ✅ PASS（2026-09-27）**：**20/20 次 ≤15s**（最差 1.684s）。工具 `tools/perf02_reconnect.py`（`0x7F` 主动断链）。**边界**＝测试中心(Bleak)测设备/链路恢复，**非** state_host 自身重连。证据：[evidence/M5/2026-09-27-PERF-02断线恢复.md](./evidence/M5/2026-09-27-PERF-02断线恢复.md)。
 
